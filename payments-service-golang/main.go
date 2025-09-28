@@ -41,6 +41,7 @@ var upgrader = websocket.Upgrader{
 
 var clients = make(map[*websocket.Conn]bool)
 var broadcast = make(chan NotificationMessage)
+var rateLimiter = make(map[string]time.Time)
 
 func main() {
 	r := mux.NewRouter()
@@ -74,6 +75,16 @@ func main() {
 }
 
 func processPayment(w http.ResponseWriter, r *http.Request) {
+	// Rate limiting check
+	clientIP := r.RemoteAddr
+	if lastRequest, exists := rateLimiter[clientIP]; exists {
+		if time.Since(lastRequest) < time.Second*2 {
+			http.Error(w, "Muitas tentativas. Aguarde 2 segundos.", http.StatusTooManyRequests)
+			return
+		}
+	}
+	rateLimiter[clientIP] = time.Now()
+	
 	var req PaymentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
