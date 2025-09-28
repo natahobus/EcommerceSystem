@@ -77,6 +77,12 @@ func processPayment(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
+	
+	// Validate payment data
+	if req.OrderID == "" || req.Amount <= 0 || req.Method == "" {
+		http.Error(w, "Dados de pagamento inválidos", http.StatusBadRequest)
+		return
+	}
 
 	// Simulate payment processing
 	payment := Payment{
