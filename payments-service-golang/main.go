@@ -64,6 +64,7 @@ func main() {
 	})
 
 	// Routes
+	r.HandleFunc("/health", healthCheck).Methods("GET")
 	r.HandleFunc("/api/payments", processPayment).Methods("POST")
 	r.HandleFunc("/ws", handleWebSocket)
 	
@@ -164,6 +165,16 @@ func handleMessages() {
 			}
 		}
 	}
+}
+
+func healthCheck(w http.ResponseWriter, r *http.Request) {
+	response := map[string]interface{}{
+		"status":    "healthy",
+		"timestamp": time.Now().UTC(),
+		"service":   "payments",
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 func generateID() string {

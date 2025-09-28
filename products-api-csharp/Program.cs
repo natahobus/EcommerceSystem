@@ -83,6 +83,9 @@ app.MapDelete("/api/products/{id}", async (int id, ProductContext db) =>
     return Results.NotFound();
 });
 
+// Health Check
+app.MapGet("/health", () => new { status = "healthy", timestamp = DateTime.UtcNow });
+
 // Pedidos
 app.MapPost("/api/orders", async (Order order, ProductContext db) =>
 {
