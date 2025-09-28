@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using System.ComponentModel.DataAnnotations;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<ProductContext>(opt => opt.UseInMemoryDatabase("Products"));
+builder.Services.AddMemoryCache();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
@@ -25,8 +27,16 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowAll");
 
 // Produtos
-app.MapGet("/api/products", async (ProductContext db) =>
-    await db.Products.ToListAsync());
+app.MapGet("/api/products", async (ProductContext db, IMemoryCache cache) =>
+{
+    const string cacheKey = "products_list";
+    if (cache.TryGetValue(cacheKey, out List<Product>? cachedProducts))
+        return cachedProducts;
+    
+    var products = await db.Products.ToListAsync();
+    cache.Set(cacheKey, products, TimeSpan.FromMinutes(5));
+    return products;
+});
 
 app.MapGet("/api/products/{id}", async (int id, ProductContext db) =>
     await db.Products.FindAsync(id) is Product product ? Results.Ok(product) : Results.NotFound());
