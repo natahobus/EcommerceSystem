@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { finalize } from 'rxjs/operators';
+import { finalize, timeout } from 'rxjs/operators';
 import { LoadingService } from './loading.service';
 
 @Injectable({
@@ -15,10 +15,18 @@ export class ProductService {
   getProducts(): Observable<any[]> {
     this.loadingService.show();
     return this.http.get<any[]>(`${this.apiUrl}/products`)
-      .pipe(finalize(() => this.loadingService.hide()));
+      .pipe(
+        timeout(10000),
+        finalize(() => this.loadingService.hide())
+      );
   }
 
   createOrder(order: any): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/orders`, order);
+    this.loadingService.show();
+    return this.http.post<any>(`${this.apiUrl}/orders`, order)
+      .pipe(
+        timeout(15000),
+        finalize(() => this.loadingService.hide())
+      );
   }
 }
