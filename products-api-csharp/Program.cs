@@ -31,13 +31,20 @@ app.MapGet("/api/products", async (ProductContext db) =>
 app.MapGet("/api/products/{id}", async (int id, ProductContext db) =>
     await db.Products.FindAsync(id) is Product product ? Results.Ok(product) : Results.NotFound());
 
-app.MapPost("/api/products", async (Product product, ProductContext db) =>
+app.MapPost("/api/products", async (Product product, ProductContext db, ILogger<Program> logger) =>
 {
+    logger.LogInformation("Tentativa de criar produto: {ProductName}", product.Name);
+    
     if (string.IsNullOrWhiteSpace(product.Name) || product.Price <= 0 || product.Stock < 0)
+    {
+        logger.LogWarning("Dados inválidos para produto: {ProductName}", product.Name);
         return Results.BadRequest("Dados inválidos");
+    }
     
     db.Products.Add(product);
     await db.SaveChangesAsync();
+    
+    logger.LogInformation("Produto criado com sucesso: {ProductId}", product.Id);
     return Results.Created($"/api/products/{product.Id}", product);
 });
 
