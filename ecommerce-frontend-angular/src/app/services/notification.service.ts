@@ -1,30 +1,57 @@
 import { Injectable } from '@angular/core';
-import { Subject } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
+
+export interface Notification {
+  id: string;
+  type: 'success' | 'error' | 'info' | 'warning';
+  message: string;
+  duration?: number;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class NotificationService {
-  private socket: WebSocket | null = null;
-  private messagesSubject = new Subject<any>();
-  public messages$ = this.messagesSubject.asObservable();
+  private notificationsSubject = new BehaviorSubject<Notification[]>([]);
+  public notifications$ = this.notificationsSubject.asObservable();
 
-  connect() {
-    this.socket = new WebSocket('ws://localhost:8081/ws');
-    
-    this.socket.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      this.messagesSubject.next(message);
+  show(notification: Omit<Notification, 'id'>) {
+    const newNotification: Notification = {
+      ...notification,
+      id: Date.now().toString(),
+      duration: notification.duration || 5000
     };
 
-    this.socket.onclose = () => {
-      setTimeout(() => this.connect(), 3000);
-    };
+    const currentNotifications = this.notificationsSubject.value;
+    this.notificationsSubject.next([...currentNotifications, newNotification]);
+
+    if (newNotification.duration > 0) {
+      setTimeout(() => {
+        this.remove(newNotification.id);
+      }, newNotification.duration);
+    }
   }
 
-  disconnect() {
-    if (this.socket) {
-      this.socket.close();
-    }
+  remove(id: string) {
+    const currentNotifications = this.notificationsSubject.value;
+    this.notificationsSubject.next(
+      currentNotifications.filter(n => n.id !== id)
+    );
+  }
+
+  success(message: string) {
+    this.show({ type: 'success', message });
+  }
+
+  error(message: string) {
+    this.show({ type: 'error', message });
+  }
+
+  info(message: string) {
+    this.show({ type: 'info', message });
+  }
+
+  warning(message: string) {
+    this.show({ type: 'warning', message });
   }
 }
