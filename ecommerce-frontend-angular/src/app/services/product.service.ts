@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { finalize, timeout, catchError } from 'rxjs/operators';
+import { finalize, timeout, catchError, retry } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 import { LoadingService } from './loading.service';
 import { NotificationService } from './notification.service';
@@ -23,6 +23,7 @@ export class ProductService {
     return this.http.get<any[]>(`${this.apiUrl}/products`)
       .pipe(
         timeout(10000),
+        retry(2),
         catchError(error => {
           this.notificationService.error('Erro ao carregar produtos');
           return throwError(() => error);
