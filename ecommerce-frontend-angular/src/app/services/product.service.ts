@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { finalize } from 'rxjs/operators';
+import { LoadingService } from './loading.service';
 
 @Injectable({
   providedIn: 'root'
@@ -8,10 +10,12 @@ import { Observable } from 'rxjs';
 export class ProductService {
   private apiUrl = 'http://localhost:5000/api';
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private loadingService: LoadingService) {}
 
   getProducts(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/products`);
+    this.loadingService.show();
+    return this.http.get<any[]>(`${this.apiUrl}/products`)
+      .pipe(finalize(() => this.loadingService.hide()));
   }
 
   createOrder(order: any): Observable<any> {
