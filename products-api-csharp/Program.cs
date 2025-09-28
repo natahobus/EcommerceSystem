@@ -33,6 +33,9 @@ app.MapGet("/api/products/{id}", async (int id, ProductContext db) =>
 
 app.MapPost("/api/products", async (Product product, ProductContext db) =>
 {
+    if (string.IsNullOrWhiteSpace(product.Name) || product.Price <= 0 || product.Stock < 0)
+        return Results.BadRequest("Dados inválidos");
+    
     db.Products.Add(product);
     await db.SaveChangesAsync();
     return Results.Created($"/api/products/{product.Id}", product);
