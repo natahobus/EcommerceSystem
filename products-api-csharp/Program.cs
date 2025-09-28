@@ -58,10 +58,16 @@ app.MapPost("/api/products", async (Product product, ProductContext db, ILogger<
     return Results.Created($"/api/products/{product.Id}", product);
 });
 
-app.MapPut("/api/products/{id}", async (int id, Product inputProduct, ProductContext db) =>
+app.MapPut("/api/products/{id}", async (int id, Product inputProduct, ProductContext db, ILogger<Program> logger) =>
 {
     var product = await db.Products.FindAsync(id);
     if (product is null) return Results.NotFound();
+    
+    if (string.IsNullOrWhiteSpace(inputProduct.Name) || inputProduct.Price <= 0 || inputProduct.Stock < 0)
+    {
+        logger.LogWarning("Dados inválidos na atualização do produto {ProductId}", id);
+        return Results.BadRequest("Dados inválidos");
+    }
     
     product.Name = inputProduct.Name;
     product.Price = inputProduct.Price;
@@ -69,6 +75,7 @@ app.MapPut("/api/products/{id}", async (int id, Product inputProduct, ProductCon
     product.Category = inputProduct.Category;
     
     await db.SaveChangesAsync();
+    logger.LogInformation("Produto {ProductId} atualizado com sucesso", id);
     return Results.NoContent();
 });
 
