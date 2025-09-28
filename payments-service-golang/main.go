@@ -46,6 +46,15 @@ var rateLimiter = make(map[string]time.Time)
 func main() {
 	r := mux.NewRouter()
 	
+	// Logging middleware
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			next.ServeHTTP(w, r)
+			log.Printf("%s %s - %v", r.Method, r.URL.Path, time.Since(start))
+		})
+	})
+	
 	// CORS middleware
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
