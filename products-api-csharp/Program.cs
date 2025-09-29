@@ -165,10 +165,21 @@ public class ProductContext : DbContext
 public class Product
 {
     public int Id { get; set; }
-    [Required] public string Name { get; set; } = "";
-    [Required] public decimal Price { get; set; }
-    [Required] public int Stock { get; set; }
-    [Required] public string Category { get; set; } = "";
+    [Required]
+    [StringLength(100, MinimumLength = 2)]
+    public string Name { get; set; } = "";
+    
+    [Required]
+    [Range(0.01, 999999.99)]
+    public decimal Price { get; set; }
+    
+    [Required]
+    [Range(0, int.MaxValue)]
+    public int Stock { get; set; }
+    
+    [Required]
+    [StringLength(50, MinimumLength = 2)]
+    public string Category { get; set; } = "";
 }
 
 public class Order
