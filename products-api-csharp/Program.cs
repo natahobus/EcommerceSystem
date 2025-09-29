@@ -53,7 +53,7 @@ app.MapGet("/api/products", async (ProductContext db, IMemoryCache cache, int pa
 app.MapGet("/api/products/{id}", async (int id, ProductContext db) =>
     await db.Products.FindAsync(id) is Product product ? Results.Ok(product) : Results.NotFound());
 
-app.MapPost("/api/products", async (Product product, ProductContext db, ILogger<Program> logger) =>
+app.MapPost("/api/products", async (Product product, ProductContext db, ILogger<Program> logger, IMemoryCache cache) =>
 {
     logger.LogInformation("Tentativa de criar produto: {ProductName}", product.Name);
     
@@ -65,6 +65,14 @@ app.MapPost("/api/products", async (Product product, ProductContext db, ILogger<
     
     db.Products.Add(product);
     await db.SaveChangesAsync();
+    
+    // Invalidate cache
+    var keysToRemove = new List<string>();
+    foreach (var key in cache.GetType().GetField("_coherentState", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(cache) as IDictionary ?? new Dictionary<object, object>())
+    {
+        if (key.Key.ToString()?.StartsWith("products_list_") == true)
+            cache.Remove(key.Key);
+    }
     
     logger.LogInformation("Produto criado com sucesso: {ProductId}", product.Id);
     return Results.Created($"/api/products/{product.Id}", product);
