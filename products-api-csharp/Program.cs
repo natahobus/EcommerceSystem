@@ -27,15 +27,21 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowAll");
 
 // Produtos
-app.MapGet("/api/products", async (ProductContext db, IMemoryCache cache) =>
+app.MapGet("/api/products", async (ProductContext db, IMemoryCache cache, int page = 1, int size = 10) =>
 {
-    const string cacheKey = "products_list";
-    if (cache.TryGetValue(cacheKey, out List<Product>? cachedProducts))
-        return cachedProducts;
+    var cacheKey = $"products_list_{page}_{size}";
+    if (cache.TryGetValue(cacheKey, out object? cachedResult))
+        return cachedResult;
     
-    var products = await db.Products.ToListAsync();
-    cache.Set(cacheKey, products, TimeSpan.FromMinutes(5));
-    return products;
+    var totalItems = await db.Products.CountAsync();
+    var products = await db.Products
+        .Skip((page - 1) * size)
+        .Take(size)
+        .ToListAsync();
+    
+    var result = new { products, totalItems, page, size };
+    cache.Set(cacheKey, result, TimeSpan.FromMinutes(5));
+    return result;
 });
 
 app.MapGet("/api/products/{id}", async (int id, ProductContext db) =>
