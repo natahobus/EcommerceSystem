@@ -5,12 +5,13 @@ import { finalize, timeout, catchError, retry } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 import { LoadingService } from './loading.service';
 import { NotificationService } from './notification.service';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ProductService {
-  private apiUrl = 'http://localhost:5000/api';
+  private apiUrl = environment.apiUrl;
 
   constructor(
     private http: HttpClient, 
