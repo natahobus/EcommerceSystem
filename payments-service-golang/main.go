@@ -106,6 +106,20 @@ func processPayment(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Dados de pagamento inválidos", http.StatusBadRequest)
 		return
 	}
+	
+	// Validate payment method
+	validMethods := []string{"credit_card", "debit_card", "pix", "boleto"}
+	validMethod := false
+	for _, method := range validMethods {
+		if req.Method == method {
+			validMethod = true
+			break
+		}
+	}
+	if !validMethod {
+		http.Error(w, "Método de pagamento inválido", http.StatusBadRequest)
+		return
+	}
 
 	// Simulate payment processing
 	payment := Payment{
