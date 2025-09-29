@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -42,6 +43,8 @@ var upgrader = websocket.Upgrader{
 var clients = make(map[*websocket.Conn]bool)
 var broadcast = make(chan NotificationMessage)
 var rateLimiter = make(map[string]time.Time)
+var requestCount int64
+var totalProcessingTime time.Duration
 
 func main() {
 	r := mux.NewRouter()
@@ -85,6 +88,9 @@ func main() {
 }
 
 func processPayment(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	atomic.AddInt64(&requestCount, 1)
+	
 	// Rate limiting check
 	clientIP := r.RemoteAddr
 	if lastRequest, exists := rateLimiter[clientIP]; exists {
@@ -155,6 +161,10 @@ func processPayment(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(payment)
+	
+	// Update metrics
+	processingTime := time.Since(start)
+	totalProcessingTime += processingTime
 }
 
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -191,10 +201,17 @@ func handleMessages() {
 }
 
 func healthCheck(w http.ResponseWriter, r *http.Request) {
+	avgProcessingTime := float64(0)
+	if requestCount > 0 {
+		avgProcessingTime = float64(totalProcessingTime) / float64(requestCount) / float64(time.Millisecond)
+	}
+	
 	response := map[string]interface{}{
-		"status":    "healthy",
-		"timestamp": time.Now().UTC(),
-		"service":   "payments",
+		"status":              "healthy",
+		"timestamp":           time.Now().UTC(),
+		"service":             "payments",
+		"requestCount":        requestCount,
+		"avgProcessingTimeMs": avgProcessingTime,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
