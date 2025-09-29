@@ -27,9 +27,9 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowAll");
 
 // Produtos
-app.MapGet("/api/products", async (ProductContext db, IMemoryCache cache, int page = 1, int size = 10, string? category = null, string? search = null) =>
+app.MapGet("/api/products", async (ProductContext db, IMemoryCache cache, int page = 1, int size = 10, string? category = null, string? search = null, string? sortBy = "name", string? sortOrder = "asc") =>
 {
-    var cacheKey = $"products_list_{page}_{size}_{category}_{search}";
+    var cacheKey = $"products_list_{page}_{size}_{category}_{search}_{sortBy}_{sortOrder}";
     if (cache.TryGetValue(cacheKey, out object? cachedResult))
         return cachedResult;
     
@@ -39,13 +39,21 @@ app.MapGet("/api/products", async (ProductContext db, IMemoryCache cache, int pa
     if (!string.IsNullOrEmpty(search))
         query = query.Where(p => p.Name.Contains(search));
     
+    // Apply sorting
+    query = sortBy?.ToLower() switch
+    {
+        "price" => sortOrder == "desc" ? query.OrderByDescending(p => p.Price) : query.OrderBy(p => p.Price),
+        "stock" => sortOrder == "desc" ? query.OrderByDescending(p => p.Stock) : query.OrderBy(p => p.Stock),
+        _ => sortOrder == "desc" ? query.OrderByDescending(p => p.Name) : query.OrderBy(p => p.Name)
+    };
+    
     var totalItems = await query.CountAsync();
     var products = await query
         .Skip((page - 1) * size)
         .Take(size)
         .ToListAsync();
     
-    var result = new { products, totalItems, page, size, category, search };
+    var result = new { products, totalItems, page, size, category, search, sortBy, sortOrder };
     cache.Set(cacheKey, result, TimeSpan.FromMinutes(5));
     return result;
 });
