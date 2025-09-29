@@ -103,6 +103,17 @@ app.MapDelete("/api/products/{id}", async (int id, ProductContext db) =>
 // Health Check
 app.MapGet("/health", () => new { status = "healthy", timestamp = DateTime.UtcNow });
 
+// Estatísticas
+app.MapGet("/api/stats", async (ProductContext db) =>
+{
+    var totalProducts = await db.Products.CountAsync();
+    var totalOrders = await db.Orders.CountAsync();
+    var totalRevenue = await db.Orders.SumAsync(o => o.Total);
+    var lowStockProducts = await db.Products.CountAsync(p => p.Stock < 10);
+    
+    return new { totalProducts, totalOrders, totalRevenue, lowStockProducts };
+});
+
 // Pedidos
 app.MapPost("/api/orders", async (Order order, ProductContext db) =>
 {
