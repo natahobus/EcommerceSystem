@@ -51,6 +51,7 @@ var totalProcessingTime time.Duration
 var failureCount int64
 var circuitOpen bool
 var lastFailureTime time.Time
+var connectionPool = make(chan struct{}, 100) // Pool de 100 conexões
 
 func main() {
 	r := mux.NewRouter()
@@ -118,6 +119,15 @@ func main() {
 }
 
 func processPayment(w http.ResponseWriter, r *http.Request) {
+	// Acquire connection from pool
+	select {
+	case connectionPool <- struct{}{}:
+		defer func() { <-connectionPool }()
+	default:
+		http.Error(w, "Servidor sobrecarregado", http.StatusTooManyRequests)
+		return
+	}
+	
 	start := time.Now()
 	atomic.AddInt64(&requestCount, 1)
 	
