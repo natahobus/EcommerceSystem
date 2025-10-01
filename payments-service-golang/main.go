@@ -1,11 +1,14 @@
 package main
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -55,6 +58,20 @@ func main() {
 			start := time.Now()
 			next.ServeHTTP(w, r)
 			log.Printf("%s %s - %v", r.Method, r.URL.Path, time.Since(start))
+		})
+	})
+	
+	// Compression middleware
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+				w.Header().Set("Content-Encoding", "gzip")
+				gz := gzip.NewWriter(w)
+				defer gz.Close()
+				next.ServeHTTP(gzipResponseWriter{Writer: gz, ResponseWriter: w}, r)
+			} else {
+				next.ServeHTTP(w, r)
+			}
 		})
 	})
 	
@@ -225,6 +242,15 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+type gzipResponseWriter struct {
+	io.Writer
+	http.ResponseWriter
+}
+
+func (w gzipResponseWriter) Write(b []byte) (int, error) {
+	return w.Writer.Write(b)
 }
 
 func generateID() string {
