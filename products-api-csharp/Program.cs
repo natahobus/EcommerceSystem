@@ -152,6 +152,26 @@ app.MapGet("/api/metrics", async (ProductContext db) =>
     return new { topCategories, recentOrders };
 });
 
+// Busca avançada
+app.MapGet("/api/products/search", async (ProductContext db, string? query, decimal? minPrice, decimal? maxPrice, string? category) =>
+{
+    var products = db.Products.AsQueryable();
+    
+    if (!string.IsNullOrEmpty(query))
+        products = products.Where(p => p.Name.Contains(query) || p.Category.Contains(query));
+    
+    if (minPrice.HasValue)
+        products = products.Where(p => p.Price >= minPrice.Value);
+    
+    if (maxPrice.HasValue)
+        products = products.Where(p => p.Price <= maxPrice.Value);
+    
+    if (!string.IsNullOrEmpty(category))
+        products = products.Where(p => p.Category == category);
+    
+    return await products.Take(50).ToListAsync();
+});
+
 // Pedidos
 app.MapPost("/api/orders", async (Order order, ProductContext db) =>
 {
