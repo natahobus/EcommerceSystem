@@ -132,6 +132,23 @@ app.MapGet("/api/stats", async (ProductContext db) =>
     return new { totalProducts, totalOrders, totalRevenue, lowStockProducts };
 });
 
+// Métricas
+app.MapGet("/api/metrics", async (ProductContext db) =>
+{
+    var topCategories = await db.Products
+        .GroupBy(p => p.Category)
+        .Select(g => new { category = g.Key, count = g.Count() })
+        .OrderByDescending(x => x.count)
+        .Take(5)
+        .ToListAsync();
+    
+    var recentOrders = await db.Orders
+        .Where(o => o.CreatedAt >= DateTime.Now.AddDays(-7))
+        .CountAsync();
+    
+    return new { topCategories, recentOrders };
+});
+
 // Pedidos
 app.MapPost("/api/orders", async (Order order, ProductContext db) =>
 {
