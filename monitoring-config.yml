@@ -1,0 +1,25 @@
+monitoring:
+  enabled: true
+  metrics:
+    - name: "request_count"
+      type: "counter"
+    - name: "response_time"
+      type: "histogram"
+    - name: "error_rate"
+      type: "gauge"
+  
+  alerts:
+    - name: "high_error_rate"
+      condition: "error_rate > 0.05"
+      action: "email"
+    - name: "slow_response"
+      condition: "response_time > 2000"
+      action: "log"
+
+  endpoints:
+    health_check: "/health"
+    metrics: "/metrics"
+    
+  retention:
+    logs: "30d"
+    metrics: "7d"
