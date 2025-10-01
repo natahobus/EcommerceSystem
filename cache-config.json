@@ -1,0 +1,12 @@
+{
+  "redis": {
+    "connectionString": "localhost:6379",
+    "database": 0,
+    "keyPrefix": "ecommerce:",
+    "defaultExpiration": "00:05:00"
+  },
+  "memoryCache": {
+    "sizeLimit": 1000,
+    "compactionPercentage": 0.25
+  }
+}
