@@ -48,6 +48,9 @@ var broadcast = make(chan NotificationMessage)
 var rateLimiter = make(map[string]time.Time)
 var requestCount int64
 var totalProcessingTime time.Duration
+var failureCount int64
+var circuitOpen bool
+var lastFailureTime time.Time
 
 func main() {
 	r := mux.NewRouter()
@@ -163,6 +166,12 @@ func processPayment(w http.ResponseWriter, r *http.Request) {
 		Created: time.Now(),
 	}
 
+	// Circuit breaker check
+	if circuitOpen && time.Since(lastFailureTime) < time.Minute*5 {
+		http.Error(w, "Serviço temporariamente indisponível", http.StatusServiceUnavailable)
+		return
+	}
+	
 	// Simulate random success/failure
 	if rand.Float32() > 0.2 { // 80% success rate
 		payment.Status = "approved"
@@ -175,8 +184,19 @@ func processPayment(w http.ResponseWriter, r *http.Request) {
 		}
 		broadcast <- notification
 		
+		// Reset circuit breaker on success
+		atomic.StoreInt64(&failureCount, 0)
+		circuitOpen = false
+		
 	} else {
 		payment.Status = "declined"
+		
+		// Increment failure count
+		atomic.AddInt64(&failureCount, 1)
+		if failureCount >= 5 {
+			circuitOpen = true
+			lastFailureTime = time.Now()
+		}
 		
 		notification := NotificationMessage{
 			Type:    "payment_failed",
