@@ -193,6 +193,22 @@ app.MapPost("/api/orders", async (Order order, ProductContext db) =>
 app.MapGet("/api/orders", async (ProductContext db) =>
     await db.Orders.Include(o => o.Items).ToListAsync());
 
+// Relatórios
+app.MapGet("/api/reports/sales", async (ProductContext db, DateTime? startDate, DateTime? endDate) =>
+{
+    var start = startDate ?? DateTime.Now.AddDays(-30);
+    var end = endDate ?? DateTime.Now;
+    
+    var salesData = await db.Orders
+        .Where(o => o.CreatedAt >= start && o.CreatedAt <= end)
+        .GroupBy(o => o.CreatedAt.Date)
+        .Select(g => new { date = g.Key, total = g.Sum(o => o.Total), count = g.Count() })
+        .OrderBy(x => x.date)
+        .ToListAsync();
+    
+    return new { period = new { start, end }, sales = salesData };
+});
+
 app.Run();
 
 public class ProductContext : DbContext
