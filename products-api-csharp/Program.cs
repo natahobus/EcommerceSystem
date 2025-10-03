@@ -215,6 +215,15 @@ app.MapGet("/api/reports/sales", async (ProductContext db, DateTime? startDate, 
 app.MapGet("/api/products/featured", async (ProductContext db) =>
     await db.Products.Where(p => p.IsFeatured).Take(10).ToListAsync());
 
+// Verificar estoque
+app.MapGet("/api/products/{id}/stock", async (int id, ProductContext db) =>
+{
+    var product = await db.Products.FindAsync(id);
+    if (product == null) return Results.NotFound();
+    
+    return new { productId = id, stock = product.Stock, available = product.Stock > 0 };
+});
+
 app.Run();
 
 public class ProductContext : DbContext
