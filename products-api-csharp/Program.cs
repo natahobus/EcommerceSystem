@@ -243,6 +243,13 @@ app.MapGet("/api/products/on-sale", async (ProductContext db) =>
 app.MapGet("/api/products/{id}/reviews", async (int id, ProductContext db) =>
     await db.Reviews.Where(r => r.ProductId == id).ToListAsync());
 
+// Cupons
+app.MapGet("/api/coupons/{code}", async (string code, ProductContext db) =>
+{
+    var coupon = await db.Coupons.FirstOrDefaultAsync(c => c.Code == code && c.IsActive && c.ExpiresAt > DateTime.Now);
+    return coupon != null ? Results.Ok(coupon) : Results.NotFound();
+});
+
 app.Run();
 
 public class ProductContext : DbContext
@@ -253,6 +260,7 @@ public class ProductContext : DbContext
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<PriceHistory> PriceHistories => Set<PriceHistory>();
     public DbSet<Review> Reviews => Set<Review>();
+    public DbSet<Coupon> Coupons => Set<Coupon>();
 }
 
 public class Product
@@ -312,6 +320,15 @@ public class Review
     public int Rating { get; set; }
     public string Comment { get; set; } = "";
     public DateTime CreatedAt { get; set; } = DateTime.Now;
+}
+
+public class Coupon
+{
+    public int Id { get; set; }
+    public string Code { get; set; } = "";
+    public decimal DiscountPercentage { get; set; }
+    public DateTime ExpiresAt { get; set; }
+    public bool IsActive { get; set; } = true;
 }
 
 public class ThrottleService
