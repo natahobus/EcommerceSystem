@@ -211,6 +211,10 @@ app.MapGet("/api/reports/sales", async (ProductContext db, DateTime? startDate, 
     return new { period = new { start, end }, sales = salesData };
 });
 
+// Produtos em destaque
+app.MapGet("/api/products/featured", async (ProductContext db) =>
+    await db.Products.Where(p => p.IsFeatured).Take(10).ToListAsync());
+
 app.Run();
 
 public class ProductContext : DbContext
@@ -241,6 +245,7 @@ public class Product
     public string Category { get; set; } = "";
     
     public string Tags { get; set; } = "";
+    public bool IsFeatured { get; set; } = false;
 }
 
 public class Order
