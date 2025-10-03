@@ -235,6 +235,10 @@ app.MapGet("/api/products/{id}/stock", async (int id, ProductContext db) =>
 app.MapGet("/api/categories", async (ProductContext db) =>
     await db.Products.Select(p => p.Category).Distinct().ToListAsync());
 
+// Produtos em promoção
+app.MapGet("/api/products/on-sale", async (ProductContext db) =>
+    await db.Products.Where(p => p.DiscountPercentage > 0).Take(20).ToListAsync());
+
 app.Run();
 
 public class ProductContext : DbContext
