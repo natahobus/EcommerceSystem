@@ -6,6 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<ProductContext>(opt => opt.UseInMemoryDatabase("Products"));
 builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<ThrottleService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
@@ -237,4 +238,20 @@ public class OrderItem
     public int ProductId { get; set; }
     public int Quantity { get; set; }
     public decimal Price { get; set; }
+}
+
+public class ThrottleService
+{
+    private readonly Dictionary<string, DateTime> _requests = new();
+    
+    public bool IsAllowed(string clientId)
+    {
+        if (_requests.TryGetValue(clientId, out var lastRequest))
+        {
+            if (DateTime.Now - lastRequest < TimeSpan.FromSeconds(1))
+                return false;
+        }
+        _requests[clientId] = DateTime.Now;
+        return true;
+    }
 }
