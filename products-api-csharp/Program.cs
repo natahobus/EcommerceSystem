@@ -266,6 +266,8 @@ public class Product
     
     public string Tags { get; set; } = "";
     public bool IsFeatured { get; set; } = false;
+    public decimal DiscountPercentage { get; set; } = 0;
+    public decimal FinalPrice => Price * (1 - DiscountPercentage / 100);
 }
 
 public class Order
