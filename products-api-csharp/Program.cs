@@ -231,6 +231,10 @@ app.MapGet("/api/products/{id}/stock", async (int id, ProductContext db) =>
     return new { productId = id, stock = product.Stock, available = product.Stock > 0 };
 });
 
+// Categorias
+app.MapGet("/api/categories", async (ProductContext db) =>
+    await db.Products.Select(p => p.Category).Distinct().ToListAsync());
+
 app.Run();
 
 public class ProductContext : DbContext
