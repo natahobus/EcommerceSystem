@@ -247,6 +247,7 @@ public class ProductContext : DbContext
     public DbSet<Product> Products => Set<Product>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<PriceHistory> PriceHistories => Set<PriceHistory>();
 }
 
 public class Product
@@ -289,6 +290,14 @@ public class OrderItem
     public int ProductId { get; set; }
     public int Quantity { get; set; }
     public decimal Price { get; set; }
+}
+
+public class PriceHistory
+{
+    public int Id { get; set; }
+    public int ProductId { get; set; }
+    public decimal Price { get; set; }
+    public DateTime ChangedAt { get; set; } = DateTime.Now;
 }
 
 public class ThrottleService
