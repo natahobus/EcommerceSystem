@@ -9,6 +9,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<ThrottleService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddResponseCompression();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecific", policy =>
@@ -28,6 +29,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseResponseCompression();
 app.UseCors("AllowSpecific");
 
 // Produtos
