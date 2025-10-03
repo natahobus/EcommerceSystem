@@ -61,7 +61,9 @@ func main() {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			next.ServeHTTP(w, r)
-			log.Printf("%s %s - %v", r.Method, r.URL.Path, time.Since(start))
+			log.Printf("[%s] %s %s - %v - IP: %s", 
+				time.Now().Format("2006-01-02 15:04:05"),
+				r.Method, r.URL.Path, time.Since(start), r.RemoteAddr)
 		})
 	})
 	
