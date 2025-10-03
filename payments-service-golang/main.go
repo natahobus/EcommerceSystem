@@ -52,6 +52,7 @@ var failureCount int64
 var circuitOpen bool
 var lastFailureTime time.Time
 var connectionPool = make(chan struct{}, 100) // Pool de 100 conexões
+var activeSessions = make(map[string]time.Time)
 
 func main() {
 	r := mux.NewRouter()
@@ -111,6 +112,7 @@ func main() {
 	// Routes
 	r.HandleFunc("/health", healthCheck).Methods("GET")
 	r.HandleFunc("/api/payments", processPayment).Methods("POST")
+	r.HandleFunc("/api/sessions", getSessions).Methods("GET")
 	r.HandleFunc("/ws", handleWebSocket)
 	
 	// Start WebSocket message handler
@@ -283,6 +285,16 @@ type gzipResponseWriter struct {
 
 func (w gzipResponseWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
+}
+
+func getSessions(w http.ResponseWriter, r *http.Request) {
+	activeSessions[r.RemoteAddr] = time.Now()
+	response := map[string]interface{}{
+		"activeSessions": len(activeSessions),
+		"timestamp":      time.Now().UTC(),
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 func generateID() string {
