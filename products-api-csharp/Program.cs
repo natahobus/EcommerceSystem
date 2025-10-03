@@ -239,6 +239,10 @@ app.MapGet("/api/categories", async (ProductContext db) =>
 app.MapGet("/api/products/on-sale", async (ProductContext db) =>
     await db.Products.Where(p => p.DiscountPercentage > 0).Take(20).ToListAsync());
 
+// Avaliações
+app.MapGet("/api/products/{id}/reviews", async (int id, ProductContext db) =>
+    await db.Reviews.Where(r => r.ProductId == id).ToListAsync());
+
 app.Run();
 
 public class ProductContext : DbContext
@@ -248,6 +252,7 @@ public class ProductContext : DbContext
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<PriceHistory> PriceHistories => Set<PriceHistory>();
+    public DbSet<Review> Reviews => Set<Review>();
 }
 
 public class Product
@@ -298,6 +303,15 @@ public class PriceHistory
     public int ProductId { get; set; }
     public decimal Price { get; set; }
     public DateTime ChangedAt { get; set; } = DateTime.Now;
+}
+
+public class Review
+{
+    public int Id { get; set; }
+    public int ProductId { get; set; }
+    public int Rating { get; set; }
+    public string Comment { get; set; } = "";
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
 }
 
 public class ThrottleService
