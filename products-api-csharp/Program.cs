@@ -159,7 +159,7 @@ app.MapGet("/api/products/search", async (ProductContext db, string? query, deci
     var products = db.Products.AsQueryable();
     
     if (!string.IsNullOrEmpty(query))
-        products = products.Where(p => p.Name.Contains(query) || p.Category.Contains(query));
+        products = products.Where(p => p.Name.Contains(query) || p.Category.Contains(query) || p.Tags.Contains(query));
     
     if (minPrice.HasValue)
         products = products.Where(p => p.Price >= minPrice.Value);
@@ -221,6 +221,8 @@ public class Product
     [Required]
     [StringLength(50, MinimumLength = 2)]
     public string Category { get; set; } = "";
+    
+    public string Tags { get; set; } = "";
 }
 
 public class Order
