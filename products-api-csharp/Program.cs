@@ -291,6 +291,7 @@ public class ProductContext : DbContext
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<Coupon> Coupons => Set<Coupon>();
     public DbSet<Wishlist> Wishlists => Set<Wishlist>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 }
 
 public class Product
@@ -367,6 +368,16 @@ public class Wishlist
     public string UserId { get; set; } = "";
     public int ProductId { get; set; }
     public DateTime AddedAt { get; set; } = DateTime.Now;
+}
+
+public class AuditLog
+{
+    public int Id { get; set; }
+    public string Action { get; set; } = "";
+    public string EntityType { get; set; } = "";
+    public int EntityId { get; set; }
+    public string UserId { get; set; } = "";
+    public DateTime Timestamp { get; set; } = DateTime.Now;
 }
 
 public class ThrottleService
