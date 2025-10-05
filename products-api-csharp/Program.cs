@@ -263,6 +263,7 @@ public class ProductContext : DbContext
     public DbSet<PriceHistory> PriceHistories => Set<PriceHistory>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<Coupon> Coupons => Set<Coupon>();
+    public DbSet<Wishlist> Wishlists => Set<Wishlist>();
 }
 
 public class Product
@@ -331,6 +332,14 @@ public class Coupon
     public decimal DiscountPercentage { get; set; }
     public DateTime ExpiresAt { get; set; }
     public bool IsActive { get; set; } = true;
+}
+
+public class Wishlist
+{
+    public int Id { get; set; }
+    public string UserId { get; set; } = "";
+    public int ProductId { get; set; }
+    public DateTime AddedAt { get; set; } = DateTime.Now;
 }
 
 public class ThrottleService
