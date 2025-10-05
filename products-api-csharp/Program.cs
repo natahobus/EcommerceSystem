@@ -261,6 +261,20 @@ app.MapGet("/api/products/bestsellers", async (ProductContext db) =>
         .ToListAsync();
     
     return bestsellers;
+});
+
+// Recomendações
+app.MapGet("/api/products/{id}/recommendations", async (int id, ProductContext db) =>
+{
+    var product = await db.Products.FindAsync(id);
+    if (product == null) return Results.NotFound();
+    
+    var recommendations = await db.Products
+        .Where(p => p.Category == product.Category && p.Id != id)
+        .Take(5)
+        .ToListAsync();
+    
+    return recommendations;
 });piresAt > DateTime.Now);
     return coupon != null ? Results.Ok(coupon) : Results.NotFound();
 });
