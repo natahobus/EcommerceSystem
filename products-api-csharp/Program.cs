@@ -248,6 +248,8 @@ app.MapGet("/api/coupons/{code}", async (string code, ProductContext db) =>
 {
     var coupon = await db.Coupons.FirstOrDefaultAsync(c => c.Code == code && c.IsActive && c.ExpiresAt > DateTime.Now);
     return coupon != null ? Results.Ok(coupon) : Results.NotFound();
+});piresAt > DateTime.Now);
+    return coupon != null ? Results.Ok(coupon) : Results.NotFound();
 });
 
 app.Run();
