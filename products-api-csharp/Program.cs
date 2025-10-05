@@ -248,6 +248,19 @@ app.MapGet("/api/coupons/{code}", async (string code, ProductContext db) =>
 {
     var coupon = await db.Coupons.FirstOrDefaultAsync(c => c.Code == code && c.IsActive && c.ExpiresAt > DateTime.Now);
     return coupon != null ? Results.Ok(coupon) : Results.NotFound();
+});
+
+// Produtos mais vendidos
+app.MapGet("/api/products/bestsellers", async (ProductContext db) =>
+{
+    var bestsellers = await db.OrderItems
+        .GroupBy(oi => oi.ProductId)
+        .Select(g => new { productId = g.Key, totalSold = g.Sum(oi => oi.Quantity) })
+        .OrderByDescending(x => x.totalSold)
+        .Take(10)
+        .ToListAsync();
+    
+    return bestsellers;
 });piresAt > DateTime.Now);
     return coupon != null ? Results.Ok(coupon) : Results.NotFound();
 });
