@@ -296,6 +296,17 @@ app.MapGet("/api/products/filter", async (ProductContext db, bool? inStock, bool
         query = query.Where(p => p.IsFeatured);
     
     return await query.Take(100).ToListAsync();
+});
+
+// Estatísticas detalhadas
+app.MapGet("/api/stats/detailed", async (ProductContext db) =>
+{
+    var totalValue = await db.Products.SumAsync(p => p.Price * p.Stock);
+    var avgPrice = await db.Products.AverageAsync(p => p.Price);
+    var totalCategories = await db.Products.Select(p => p.Category).Distinct().CountAsync();
+    var outOfStock = await db.Products.CountAsync(p => p.Stock == 0);
+    
+    return new { totalValue, avgPrice, totalCategories, outOfStock };
 });piresAt > DateTime.Now);
     return coupon != null ? Results.Ok(coupon) : Results.NotFound();
 });
