@@ -279,7 +279,24 @@ app.MapGet("/api/products/{id}/recommendations", async (int id, ProductContext d
 
 // Inventário
 app.MapGet("/api/inventory/low-stock", async (ProductContext db, int threshold = 5) =>
-    await db.Products.Where(p => p.Stock <= threshold).ToListAsync());piresAt > DateTime.Now);
+    await db.Products.Where(p => p.Stock <= threshold).ToListAsync());
+
+// Filtros avançados
+app.MapGet("/api/products/filter", async (ProductContext db, bool? inStock, bool? onSale, bool? featured, decimal? rating) =>
+{
+    var query = db.Products.AsQueryable();
+    
+    if (inStock == true)
+        query = query.Where(p => p.Stock > 0);
+    
+    if (onSale == true)
+        query = query.Where(p => p.DiscountPercentage > 0);
+    
+    if (featured == true)
+        query = query.Where(p => p.IsFeatured);
+    
+    return await query.Take(100).ToListAsync();
+});piresAt > DateTime.Now);
     return coupon != null ? Results.Ok(coupon) : Results.NotFound();
 });
 
