@@ -275,7 +275,11 @@ app.MapGet("/api/products/{id}/recommendations", async (int id, ProductContext d
         .ToListAsync();
     
     return recommendations;
-});piresAt > DateTime.Now);
+});
+
+// Inventário
+app.MapGet("/api/inventory/low-stock", async (ProductContext db, int threshold = 5) =>
+    await db.Products.Where(p => p.Stock <= threshold).ToListAsync());piresAt > DateTime.Now);
     return coupon != null ? Results.Ok(coupon) : Results.NotFound();
 });
 
