@@ -323,6 +323,18 @@ app.MapGet("/api/alerts/stock", async (ProductContext db) =>
     var lowStock = await db.Products.Where(p => p.Stock > 2 && p.Stock <= 10).ToListAsync();
     
     return new { critical = criticalStock, low = lowStock };
+});
+
+// Exportação de dados
+app.MapGet("/api/export/products", async (ProductContext db) =>
+{
+    var products = await db.Products.ToListAsync();
+    var csv = "Id,Name,Price,Stock,Category\n";
+    foreach (var p in products)
+    {
+        csv += $"{p.Id},{p.Name},{p.Price},{p.Stock},{p.Category}\n";
+    }
+    return Results.Text(csv, "text/csv");
 });piresAt > DateTime.Now);
     return coupon != null ? Results.Ok(coupon) : Results.NotFound();
 });
