@@ -335,6 +335,20 @@ app.MapGet("/api/export/products", async (ProductContext db) =>
         csv += $"{p.Id},{p.Name},{p.Price},{p.Stock},{p.Category}\n";
     }
     return Results.Text(csv, "text/csv");
+});
+
+// Produtos relacionados
+app.MapGet("/api/products/{id}/related", async (int id, ProductContext db) =>
+{
+    var product = await db.Products.FindAsync(id);
+    if (product == null) return Results.NotFound();
+    
+    var related = await db.Products
+        .Where(p => p.Id != id && (p.Category == product.Category || p.Tags.Contains(product.Tags)))
+        .Take(8)
+        .ToListAsync();
+    
+    return related;
 });piresAt > DateTime.Now);
     return coupon != null ? Results.Ok(coupon) : Results.NotFound();
 });
