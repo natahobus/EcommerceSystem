@@ -314,6 +314,15 @@ app.MapGet("/api/products/barcode/{code}", async (string code, ProductContext db
 {
     var product = await db.Products.FirstOrDefaultAsync(p => p.Barcode == code);
     return product != null ? Results.Ok(product) : Results.NotFound();
+});
+
+// Alertas de estoque
+app.MapGet("/api/alerts/stock", async (ProductContext db) =>
+{
+    var criticalStock = await db.Products.Where(p => p.Stock <= 2).ToListAsync();
+    var lowStock = await db.Products.Where(p => p.Stock > 2 && p.Stock <= 10).ToListAsync();
+    
+    return new { critical = criticalStock, low = lowStock };
 });piresAt > DateTime.Now);
     return coupon != null ? Results.Ok(coupon) : Results.NotFound();
 });
