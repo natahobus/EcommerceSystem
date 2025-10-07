@@ -307,6 +307,13 @@ app.MapGet("/api/stats/detailed", async (ProductContext db) =>
     var outOfStock = await db.Products.CountAsync(p => p.Stock == 0);
     
     return new { totalValue, avgPrice, totalCategories, outOfStock };
+});
+
+// Busca por código de barras
+app.MapGet("/api/products/barcode/{code}", async (string code, ProductContext db) =>
+{
+    var product = await db.Products.FirstOrDefaultAsync(p => p.Barcode == code);
+    return product != null ? Results.Ok(product) : Results.NotFound();
 });piresAt > DateTime.Now);
     return coupon != null ? Results.Ok(coupon) : Results.NotFound();
 });
@@ -348,6 +355,7 @@ public class Product
     public string Tags { get; set; } = "";
     public bool IsFeatured { get; set; } = false;
     public decimal DiscountPercentage { get; set; } = 0;
+    public string Barcode { get; set; } = "";
     public decimal FinalPrice => Price * (1 - DiscountPercentage / 100);
 }
 
