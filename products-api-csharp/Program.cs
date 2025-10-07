@@ -349,6 +349,23 @@ app.MapGet("/api/products/{id}/related", async (int id, ProductContext db) =>
         .ToListAsync();
     
     return related;
+});
+
+// Métricas em tempo real
+app.MapGet("/api/metrics/realtime", async (ProductContext db) =>
+{
+    var now = DateTime.Now;
+    var todayOrders = await db.Orders.CountAsync(o => o.CreatedAt.Date == now.Date);
+    var todayRevenue = await db.Orders.Where(o => o.CreatedAt.Date == now.Date).SumAsync(o => o.Total);
+    var activeProducts = await db.Products.CountAsync(p => p.Stock > 0);
+    
+    return new { 
+        timestamp = now,
+        todayOrders,
+        todayRevenue,
+        activeProducts,
+        serverUptime = Environment.TickCount64
+    };
 });piresAt > DateTime.Now);
     return coupon != null ? Results.Ok(coupon) : Results.NotFound();
 });
