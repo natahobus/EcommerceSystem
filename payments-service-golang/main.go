@@ -53,6 +53,7 @@ var circuitOpen bool
 var lastFailureTime time.Time
 var connectionPool = make(chan struct{}, 100) // Pool de 100 conexões
 var activeSessions = make(map[string]time.Time)
+var performanceMetrics = make(map[string][]time.Duration)
 
 func main() {
 	r := mux.NewRouter()
@@ -231,6 +232,12 @@ func processPayment(w http.ResponseWriter, r *http.Request) {
 	// Update metrics
 	processingTime := time.Since(start)
 	totalProcessingTime += processingTime
+	
+	// Store performance metrics
+	performanceMetrics["payment_processing"] = append(performanceMetrics["payment_processing"], processingTime)
+	if len(performanceMetrics["payment_processing"]) > 100 {
+		performanceMetrics["payment_processing"] = performanceMetrics["payment_processing"][1:]
+	}
 }
 
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
