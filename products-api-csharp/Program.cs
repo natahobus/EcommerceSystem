@@ -377,6 +377,24 @@ app.MapGet("/api/logs", async (ProductContext db) =>
         .ToListAsync();
     
     return logs;
+});
+
+// Busca por proximidade (simulado)
+app.MapGet("/api/products/nearby", async (ProductContext db, double lat = 0, double lng = 0, int radius = 10) =>
+{
+    // Simulação de busca por proximidade
+    var products = await db.Products
+        .Where(p => p.Stock > 0)
+        .Take(20)
+        .ToListAsync();
+    
+    return new { 
+        location = new { latitude = lat, longitude = lng, radius },
+        products = products.Select(p => new {
+            p.Id, p.Name, p.Price, p.Stock,
+            distance = Math.Round(new Random().NextDouble() * radius, 2)
+        })
+    };
 });piresAt > DateTime.Now);
     return coupon != null ? Results.Ok(coupon) : Results.NotFound();
 });
