@@ -412,6 +412,30 @@ app.MapGet("/api/monitoring", async (ProductContext db) =>
         status = "healthy",
         timestamp = DateTime.UtcNow
     };
+});
+
+// Métricas de conversão
+app.MapGet("/api/metrics/conversion", async (ProductContext db) =>
+{
+    var totalViews = await db.AuditLogs.CountAsync(l => l.Action == "view_product");
+    var totalOrders = await db.Orders.CountAsync();
+    var conversionRate = totalViews > 0 ? (double)totalOrders / totalViews * 100 : 0;
+    
+    var avgOrderValue = await db.Orders.AverageAsync(o => (double)o.Total);
+    var topSellingProducts = await db.OrderItems
+        .GroupBy(oi => oi.ProductId)
+        .Select(g => new { productId = g.Key, quantity = g.Sum(oi => oi.Quantity) })
+        .OrderByDescending(x => x.quantity)
+        .Take(5)
+        .ToListAsync();
+    
+    return new {
+        conversionRate = Math.Round(conversionRate, 2),
+        avgOrderValue = Math.Round(avgOrderValue, 2),
+        totalViews,
+        totalOrders,
+        topSellingProducts
+    };
 });piresAt > DateTime.Now);
     return coupon != null ? Results.Ok(coupon) : Results.NotFound();
 });
