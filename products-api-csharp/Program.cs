@@ -366,6 +366,17 @@ app.MapGet("/api/metrics/realtime", async (ProductContext db) =>
         activeProducts,
         serverUptime = Environment.TickCount64
     };
+});
+
+// Logs do sistema
+app.MapGet("/api/logs", async (ProductContext db) =>
+{
+    var logs = await db.AuditLogs
+        .OrderByDescending(l => l.Timestamp)
+        .Take(100)
+        .ToListAsync();
+    
+    return logs;
 });piresAt > DateTime.Now);
     return coupon != null ? Results.Ok(coupon) : Results.NotFound();
 });
