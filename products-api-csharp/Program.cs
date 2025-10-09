@@ -395,6 +395,23 @@ app.MapGet("/api/products/nearby", async (ProductContext db, double lat = 0, dou
             distance = Math.Round(new Random().NextDouble() * radius, 2)
         })
     };
+});
+
+// Monitoramento da API
+app.MapGet("/api/monitoring", async (ProductContext db) =>
+{
+    var uptime = Environment.TickCount64;
+    var memoryUsage = GC.GetTotalMemory(false);
+    var requestsToday = await db.AuditLogs
+        .CountAsync(l => l.Timestamp.Date == DateTime.Today);
+    
+    return new {
+        uptime = TimeSpan.FromMilliseconds(uptime),
+        memoryUsage = $"{memoryUsage / 1024 / 1024} MB",
+        requestsToday,
+        status = "healthy",
+        timestamp = DateTime.UtcNow
+    };
 });piresAt > DateTime.Now);
     return coupon != null ? Results.Ok(coupon) : Results.NotFound();
 });
