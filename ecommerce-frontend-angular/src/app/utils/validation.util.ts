@@ -45,4 +45,43 @@ export class ValidationUtil {
   static isNumeric(value: string): boolean {
     return !isNaN(Number(value)) && !isNaN(parseFloat(value));
   }
+
+  static isCNPJ(cnpj: string): boolean {
+    cnpj = cnpj.replace(/[^\d]/g, '');
+    if (cnpj.length !== 14) return false;
+    
+    let sum = 0;
+    let weight = 2;
+    for (let i = 11; i >= 0; i--) {
+      sum += parseInt(cnpj.charAt(i)) * weight;
+      weight = weight === 9 ? 2 : weight + 1;
+    }
+    let remainder = sum % 11;
+    let digit1 = remainder < 2 ? 0 : 11 - remainder;
+    if (digit1 !== parseInt(cnpj.charAt(12))) return false;
+    
+    sum = 0;
+    weight = 2;
+    for (let i = 12; i >= 0; i--) {
+      sum += parseInt(cnpj.charAt(i)) * weight;
+      weight = weight === 9 ? 2 : weight + 1;
+    }
+    remainder = sum % 11;
+    let digit2 = remainder < 2 ? 0 : 11 - remainder;
+    return digit2 === parseInt(cnpj.charAt(13));
+  }
+
+  static isCEP(cep: string): boolean {
+    const cepRegex = /^\d{5}-?\d{3}$/;
+    return cepRegex.test(cep);
+  }
+
+  static isURL(url: string): boolean {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  }
 }
