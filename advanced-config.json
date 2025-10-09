@@ -1,0 +1,45 @@
+{
+  "system": {
+    "name": "E-commerce Advanced System",
+    "version": "2.0.0",
+    "environment": "production",
+    "debug": false
+  },
+  "performance": {
+    "cacheEnabled": true,
+    "cacheTTL": 300,
+    "compressionEnabled": true,
+    "maxRequestsPerMinute": 1000,
+    "connectionPoolSize": 100
+  },
+  "features": {
+    "enableRecommendations": true,
+    "enableWishlist": true,
+    "enableComparison": true,
+    "enableVoiceSearch": true,
+    "enableGeolocation": true,
+    "enablePushNotifications": true,
+    "enableEmailNotifications": true
+  },
+  "security": {
+    "enableThrottling": true,
+    "enableRateLimit": true,
+    "enableCORS": true,
+    "maxLoginAttempts": 5,
+    "sessionTimeout": 3600
+  },
+  "business": {
+    "defaultCurrency": "BRL",
+    "defaultLanguage": "pt-BR",
+    "maxCartItems": 50,
+    "maxWishlistItems": 100,
+    "lowStockThreshold": 10,
+    "criticalStockThreshold": 2
+  },
+  "integrations": {
+    "paymentGateway": "stripe",
+    "emailService": "sendgrid",
+    "smsService": "twilio",
+    "analyticsService": "google-analytics"
+  }
+}
