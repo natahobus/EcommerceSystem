@@ -37,6 +37,12 @@ type NotificationMessage struct {
 	Data    interface{} `json:"data"`
 }
 
+type ChatMessage struct {
+	User    string    `json:"user"`
+	Message string    `json:"message"`
+	Time    time.Time `json:"time"`
+}
+
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
@@ -54,6 +60,8 @@ var lastFailureTime time.Time
 var connectionPool = make(chan struct{}, 100) // Pool de 100 conexões
 var activeSessions = make(map[string]time.Time)
 var performanceMetrics = make(map[string][]time.Duration)
+var chatClients = make(map[*websocket.Conn]string)
+var chatMessages = make(chan ChatMessage)
 
 func main() {
 	r := mux.NewRouter()
@@ -120,6 +128,7 @@ func main() {
 	r.HandleFunc("/api/payments", processPayment).Methods("POST")
 	r.HandleFunc("/api/sessions", getSessions).Methods("GET")
 	r.HandleFunc("/ws", handleWebSocket)
+	r.HandleFunc("/chat", handleChat).Methods("GET")
 	
 	// Start WebSocket message handler
 	go handleMessages()
@@ -307,6 +316,36 @@ func getSessions(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+func handleChat(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("Chat WebSocket upgrade error:", err)
+		return
+	}
+	defer conn.Close()
+
+	userID := r.URL.Query().Get("user")
+	if userID == "" {
+		userID = fmt.Sprintf("user_%d", time.Now().UnixNano())
+	}
+
+	chatClients[conn] = userID
+	fmt.Printf("Chat client connected: %s\n", userID)
+
+	for {
+		var msg ChatMessage
+		err := conn.ReadJSON(&msg)
+		if err != nil {
+			delete(chatClients, conn)
+			break
+		}
+
+		msg.User = userID
+		msg.Time = time.Now()
+		chatMessages <- msg
+	}
 }
 
 func generateID() string {
