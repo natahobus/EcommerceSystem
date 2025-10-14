@@ -500,6 +500,7 @@ public class ProductContext : DbContext
     public DbSet<Coupon> Coupons => Set<Coupon>();
     public DbSet<Wishlist> Wishlists => Set<Wishlist>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<SecurityLog> SecurityLogs => Set<SecurityLog>();
 }
 
 public class Product
@@ -586,6 +587,17 @@ public class AuditLog
     public string EntityType { get; set; } = "";
     public int EntityId { get; set; }
     public string UserId { get; set; } = "";
+    public DateTime Timestamp { get; set; } = DateTime.Now;
+}
+
+public class SecurityLog
+{
+    public int Id { get; set; }
+    public string Event { get; set; } = "";
+    public string IpAddress { get; set; } = "";
+    public string UserAgent { get; set; } = "";
+    public string Severity { get; set; } = "Info";
+    public string Details { get; set; } = "";
     public DateTime Timestamp { get; set; } = DateTime.Now;
 }
 
