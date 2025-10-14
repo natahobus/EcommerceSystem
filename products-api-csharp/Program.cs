@@ -7,6 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<ProductContext>(opt => opt.UseInMemoryDatabase("Products"));
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<ThrottleService>();
+builder.Services.AddSingleton<WebhookService>();
+builder.Services.AddHttpClient();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddResponseCompression();
@@ -80,7 +82,7 @@ app.MapGet("/api/products", async (ProductContext db, IMemoryCache cache, int pa
 app.MapGet("/api/products/{id}", async (int id, ProductContext db) =>
     await db.Products.FindAsync(id) is Product product ? Results.Ok(product) : Results.NotFound());
 
-app.MapPost("/api/products", async (Product product, ProductContext db, ILogger<Program> logger, IMemoryCache cache) =>
+app.MapPost("/api/products", async (Product product, ProductContext db, ILogger<Program> logger, IMemoryCache cache, WebhookService webhook) =>
 {
     logger.LogInformation("Tentativa de criar produto: {ProductName}", product.Name);
     
@@ -100,6 +102,9 @@ app.MapPost("/api/products", async (Product product, ProductContext db, ILogger<
         if (key.Key.ToString()?.StartsWith("products_list_") == true)
             cache.Remove(key.Key);
     }
+    
+    // Notify webhooks
+    await webhook.NotifyAsync("product.created", new { productId = product.Id, name = product.Name });
     
     logger.LogInformation("Produto criado com sucesso: {ProductId}", product.Id);
     return Results.Created($"/api/products/{product.Id}", product);
@@ -250,7 +255,7 @@ app.MapPost("/api/v1/orders", async (Order order, ProductContext db) =>
 });
 
 // Pedidos V2 (Enhanced)
-app.MapPost("/api/orders", async (Order order, ProductContext db) =>
+app.MapPost("/api/orders", async (Order order, ProductContext db, WebhookService webhook) =>
 {
     foreach (var item in order.Items)
     {
@@ -263,6 +268,10 @@ app.MapPost("/api/orders", async (Order order, ProductContext db) =>
     
     db.Orders.Add(order);
     await db.SaveChangesAsync();
+    
+    // Notify webhooks
+    await webhook.NotifyAsync("order.created", new { orderId = order.Id, total = order.Total });
+    
     return Results.Created($"/api/orders/{order.Id}", order);
 });
 
@@ -568,6 +577,19 @@ app.MapGet("/api/rate-limit/status", async (HttpContext context, ThrottleService
     return coupon != null ? Results.Ok(coupon) : Results.NotFound();
 });
 
+// Webhooks
+app.MapPost("/api/webhooks/register", (string url, WebhookService webhook) =>
+{
+    webhook.RegisterWebhook(url);
+    return Results.Ok(new { message = "Webhook registered", url });
+});
+
+app.MapPost("/api/webhooks/test", async (WebhookService webhook) =>
+{
+    await webhook.NotifyAsync("test.event", new { message = "Test webhook" });
+    return Results.Ok(new { message = "Test webhook sent" });
+});
+
 // Sistema de Backup
 app.MapPost("/api/system/backup", async (ProductContext db) =>
 {
@@ -692,6 +714,32 @@ public class SecurityLog
     public string Severity { get; set; } = "Info";
     public string Details { get; set; } = "";
     public DateTime Timestamp { get; set; } = DateTime.Now;
+}
+
+public class WebhookService
+{
+    private readonly List<string> _webhookUrls = new();
+    private readonly HttpClient _httpClient = new();
+    
+    public void RegisterWebhook(string url)
+    {
+        if (!_webhookUrls.Contains(url))
+            _webhookUrls.Add(url);
+    }
+    
+    public async Task NotifyAsync(string eventType, object data)
+    {
+        var payload = new { eventType, data, timestamp = DateTime.UtcNow };
+        
+        foreach (var url in _webhookUrls)
+        {
+            try
+            {
+                await _httpClient.PostAsJsonAsync(url, payload);
+            }
+            catch { /* Log error */ }
+        }
+    }
 }
 
 public class ThrottleService
