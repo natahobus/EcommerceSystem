@@ -39,7 +39,13 @@ app.Use(async (context, next) =>
 });
 app.UseCors("AllowSpecific");
 
-// Produtos
+// API Versioning
+app.MapGet("/api/version", () => new { version = "2.0", apiName = "E-commerce API", supportedVersions = new[] { "v1", "v2" } });
+
+// Produtos V1 (Legacy)
+app.MapGet("/api/v1/products", async (ProductContext db) => await db.Products.ToListAsync());
+
+// Produtos V2 (Current)
 app.MapGet("/api/products", async (ProductContext db, IMemoryCache cache, int page = 1, int size = 10, string? category = null, string? search = null, string? sortBy = "name", string? sortOrder = "asc") =>
 {
     var cacheKey = $"products_list_{page}_{size}_{category}_{search}_{sortBy}_{sortOrder}";
@@ -179,7 +185,15 @@ app.MapGet("/api/health/ready", async (ProductContext db) =>
     }
 });
 
-// Estatísticas
+// Estatísticas V1
+app.MapGet("/api/v1/stats", async (ProductContext db) =>
+{
+    var totalProducts = await db.Products.CountAsync();
+    var totalOrders = await db.Orders.CountAsync();
+    return new { totalProducts, totalOrders };
+});
+
+// Estatísticas V2 (Enhanced)
 app.MapGet("/api/stats", async (ProductContext db) =>
 {
     var totalProducts = await db.Products.CountAsync();
@@ -227,7 +241,15 @@ app.MapGet("/api/products/search", async (ProductContext db, string? query, deci
     return await products.Take(50).ToListAsync();
 });
 
-// Pedidos
+// Pedidos V1
+app.MapPost("/api/v1/orders", async (Order order, ProductContext db) =>
+{
+    db.Orders.Add(order);
+    await db.SaveChangesAsync();
+    return Results.Created($"/api/v1/orders/{order.Id}", order);
+});
+
+// Pedidos V2 (Enhanced)
 app.MapPost("/api/orders", async (Order order, ProductContext db) =>
 {
     foreach (var item in order.Items)
