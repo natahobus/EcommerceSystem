@@ -134,6 +134,51 @@ app.MapDelete("/api/products/{id}", async (int id, ProductContext db) =>
 // Health Check
 app.MapGet("/health", () => new { status = "healthy", timestamp = DateTime.UtcNow });
 
+// Health Check Detalhado
+app.MapGet("/api/health/detailed", async (ProductContext db) =>
+{
+    var dbStatus = "healthy";
+    var dbResponseTime = 0.0;
+    
+    try
+    {
+        var start = DateTime.UtcNow;
+        await db.Products.CountAsync();
+        dbResponseTime = (DateTime.UtcNow - start).TotalMilliseconds;
+    }
+    catch
+    {
+        dbStatus = "unhealthy";
+    }
+    
+    return new {
+        status = dbStatus == "healthy" ? "healthy" : "degraded",
+        timestamp = DateTime.UtcNow,
+        services = new {
+            database = new { status = dbStatus, responseTime = dbResponseTime },
+            memory = new { usage = GC.GetTotalMemory(false) / 1024 / 1024, status = "healthy" },
+            uptime = Environment.TickCount64
+        }
+    };
+});
+
+// Health Check Liveness
+app.MapGet("/api/health/live", () => new { alive = true, timestamp = DateTime.UtcNow });
+
+// Health Check Readiness
+app.MapGet("/api/health/ready", async (ProductContext db) =>
+{
+    try
+    {
+        await db.Products.CountAsync();
+        return new { ready = true, timestamp = DateTime.UtcNow };
+    }
+    catch
+    {
+        return Results.Problem("Service not ready");
+    }
+});
+
 // Estatísticas
 app.MapGet("/api/stats", async (ProductContext db) =>
 {
@@ -483,8 +528,34 @@ static async Task<object> GenerateSalesReport(ProductContext db, DateTime startD
     var orderCount = await db.Orders.Where(o => o.CreatedAt >= startDate).CountAsync();
     
     return new { totalSales, orderCount, reportType = "sales" };
-}piresAt > DateTime.Now);
+}
+
+// Rate limiting avançado
+app.MapGet("/api/rate-limit/status", async (HttpContext context, ThrottleService throttle) =>
+{
+    var clientId = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    var isAllowed = throttle.IsAllowed(clientId);
+    
+    return new {
+        clientId,
+        allowed = isAllowed,
+        timestamp = DateTime.UtcNow,
+        resetTime = DateTime.UtcNow.AddSeconds(60)
+    };
+});piresAt > DateTime.Now);
     return coupon != null ? Results.Ok(coupon) : Results.NotFound();
+});
+
+// Sistema de Backup
+app.MapPost("/api/system/backup", async (ProductContext db) =>
+{
+    var backupData = new {
+        products = await db.Products.ToListAsync(),
+        orders = await db.Orders.Include(o => o.Items).ToListAsync(),
+        timestamp = DateTime.UtcNow
+    };
+    
+    return Results.Json(backupData);
 });
 
 app.Run();
@@ -603,16 +674,42 @@ public class SecurityLog
 
 public class ThrottleService
 {
-    private readonly Dictionary<string, DateTime> _requests = new();
+    private readonly Dictionary<string, List<DateTime>> _requests = new();
+    private readonly int _maxRequests = 100;
+    private readonly TimeSpan _timeWindow = TimeSpan.FromMinutes(1);
     
     public bool IsAllowed(string clientId)
     {
-        if (_requests.TryGetValue(clientId, out var lastRequest))
+        var now = DateTime.Now;
+        
+        if (!_requests.ContainsKey(clientId))
         {
-            if (DateTime.Now - lastRequest < TimeSpan.FromSeconds(1))
-                return false;
+            _requests[clientId] = new List<DateTime>();
         }
-        _requests[clientId] = DateTime.Now;
+        
+        var clientRequests = _requests[clientId];
+        
+        // Remove old requests outside time window
+        clientRequests.RemoveAll(r => now - r > _timeWindow);
+        
+        if (clientRequests.Count >= _maxRequests)
+        {
+            return false;
+        }
+        
+        clientRequests.Add(now);
         return true;
+    }
+    
+    public int GetRequestCount(string clientId)
+    {
+        if (!_requests.ContainsKey(clientId))
+            return 0;
+            
+        var now = DateTime.Now;
+        var clientRequests = _requests[clientId];
+        clientRequests.RemoveAll(r => now - r > _timeWindow);
+        
+        return clientRequests.Count;
     }
 }
