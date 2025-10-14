@@ -577,6 +577,34 @@ app.MapGet("/api/rate-limit/status", async (HttpContext context, ThrottleService
     return coupon != null ? Results.Ok(coupon) : Results.NotFound();
 });
 
+// GraphQL-style Query
+app.MapPost("/api/query", async (QueryRequest request, ProductContext db) =>
+{
+    var result = new Dictionary<string, object>();
+    
+    if (request.Fields.Contains("products"))
+    {
+        var products = await db.Products.Take(request.Limit ?? 10).ToListAsync();
+        result["products"] = products;
+    }
+    
+    if (request.Fields.Contains("orders"))
+    {
+        var orders = await db.Orders.Take(request.Limit ?? 10).ToListAsync();
+        result["orders"] = orders;
+    }
+    
+    if (request.Fields.Contains("stats"))
+    {
+        result["stats"] = new {
+            totalProducts = await db.Products.CountAsync(),
+            totalOrders = await db.Orders.CountAsync()
+        };
+    }
+    
+    return result;
+});
+
 // Webhooks
 app.MapPost("/api/webhooks/register", (string url, WebhookService webhook) =>
 {
@@ -740,6 +768,13 @@ public class WebhookService
             catch { /* Log error */ }
         }
     }
+}
+
+public class QueryRequest
+{
+    public List<string> Fields { get; set; } = new();
+    public int? Limit { get; set; }
+    public Dictionary<string, object> Filters { get; set; } = new();
 }
 
 public class ThrottleService
