@@ -436,7 +436,54 @@ app.MapGet("/api/metrics/conversion", async (ProductContext db) =>
         totalOrders,
         topSellingProducts
     };
-});piresAt > DateTime.Now);
+});
+
+// Relatórios avançados
+app.MapGet("/api/reports/advanced", async (ProductContext db, string? type = "sales", int days = 30) =>
+{
+    var startDate = DateTime.Now.AddDays(-days);
+    
+    return type switch
+    {
+        "inventory" => await GenerateInventoryReport(db, startDate),
+        "customers" => await GenerateCustomerReport(db, startDate),
+        "performance" => await GeneratePerformanceReport(db, startDate),
+        _ => await GenerateSalesReport(db, startDate)
+    };
+});
+
+static async Task<object> GenerateInventoryReport(ProductContext db, DateTime startDate)
+{
+    var lowStock = await db.Products.Where(p => p.Stock <= 10).CountAsync();
+    var outOfStock = await db.Products.Where(p => p.Stock == 0).CountAsync();
+    var totalValue = await db.Products.SumAsync(p => p.Price * p.Stock);
+    
+    return new { lowStock, outOfStock, totalValue, reportType = "inventory" };
+}
+
+static async Task<object> GenerateCustomerReport(ProductContext db, DateTime startDate)
+{
+    var newCustomers = await db.Orders.Where(o => o.CreatedAt >= startDate).Select(o => o.Id).Distinct().CountAsync();
+    var repeatCustomers = await db.Orders.GroupBy(o => o.Id).Where(g => g.Count() > 1).CountAsync();
+    
+    return new { newCustomers, repeatCustomers, reportType = "customers" };
+}
+
+static async Task<object> GeneratePerformanceReport(ProductContext db, DateTime startDate)
+{
+    var avgOrderValue = await db.Orders.Where(o => o.CreatedAt >= startDate).AverageAsync(o => (double)o.Total);
+    var orderCount = await db.Orders.Where(o => o.CreatedAt >= startDate).CountAsync();
+    
+    return new { avgOrderValue, orderCount, reportType = "performance" };
+}
+
+static async Task<object> GenerateSalesReport(ProductContext db, DateTime startDate)
+{
+    var totalSales = await db.Orders.Where(o => o.CreatedAt >= startDate).SumAsync(o => o.Total);
+    var orderCount = await db.Orders.Where(o => o.CreatedAt >= startDate).CountAsync();
+    
+    return new { totalSales, orderCount, reportType = "sales" };
+}piresAt > DateTime.Now);
     return coupon != null ? Results.Ok(coupon) : Results.NotFound();
 });
 
