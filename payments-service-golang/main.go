@@ -137,6 +137,8 @@ func main() {
 	r.HandleFunc("/health", healthCheck).Methods("GET")
 	r.HandleFunc("/api/payments", processPayment).Methods("POST")
 	r.HandleFunc("/api/sessions", getSessions).Methods("GET")
+	r.HandleFunc("/api/notifications", getNotifications).Methods("GET")
+	r.HandleFunc("/api/notifications/send", sendNotification).Methods("POST")
 	r.HandleFunc("/ws", handleWebSocket)
 	r.HandleFunc("/chat", handleChat).Methods("GET")
 	
@@ -386,6 +388,39 @@ func processEmailTask(task Task) {
 func processNotificationTask(task Task) {
 	time.Sleep(time.Millisecond * 500) // Simulate notification
 	fmt.Printf("Notification task %s completed\n", task.ID)
+}
+
+func getNotifications(w http.ResponseWriter, r *http.Request) {
+	notifications := []map[string]interface{}{
+		{"id": 1, "message": "Sistema funcionando normalmente", "type": "info", "timestamp": time.Now()},
+		{"id": 2, "message": "Processamento de pagamentos ativo", "type": "success", "timestamp": time.Now()},
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(notifications)
+}
+
+func sendNotification(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Message string `json:"message"`
+		Type    string `json:"type"`
+	}
+	
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	
+	notification := NotificationMessage{
+		Type:    req.Type,
+		Message: req.Message,
+		Data:    map[string]interface{}{"timestamp": time.Now()},
+	}
+	
+	broadcast <- notification
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "sent"})
 }
 
 func generateID() string {
