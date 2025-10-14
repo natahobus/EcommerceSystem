@@ -84,4 +84,47 @@ export class ValidationUtil {
       return false;
     }
   }
+
+  static isCreditCard(cardNumber: string): boolean {
+    cardNumber = cardNumber.replace(/\D/g, '');
+    if (cardNumber.length < 13 || cardNumber.length > 19) return false;
+    
+    let sum = 0;
+    let isEven = false;
+    
+    for (let i = cardNumber.length - 1; i >= 0; i--) {
+      let digit = parseInt(cardNumber.charAt(i));
+      
+      if (isEven) {
+        digit *= 2;
+        if (digit > 9) digit -= 9;
+      }
+      
+      sum += digit;
+      isEven = !isEven;
+    }
+    
+    return sum % 10 === 0;
+  }
+
+  static getCreditCardType(cardNumber: string): string {
+    cardNumber = cardNumber.replace(/\D/g, '');
+    
+    if (/^4/.test(cardNumber)) return 'Visa';
+    if (/^5[1-5]/.test(cardNumber)) return 'Mastercard';
+    if (/^3[47]/.test(cardNumber)) return 'American Express';
+    if (/^6/.test(cardNumber)) return 'Discover';
+    
+    return 'Unknown';
+  }
+
+  static isValidCVV(cvv: string, cardType: string): boolean {
+    cvv = cvv.replace(/\D/g, '');
+    
+    if (cardType === 'American Express') {
+      return cvv.length === 4;
+    }
+    
+    return cvv.length === 3;
+  }
 }
