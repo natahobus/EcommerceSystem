@@ -43,6 +43,14 @@ type ChatMessage struct {
 	Time    time.Time `json:"time"`
 }
 
+type Task struct {
+	ID       string      `json:"id"`
+	Type     string      `json:"type"`
+	Payload  interface{} `json:"payload"`
+	Retries  int         `json:"retries"`
+	Created  time.Time   `json:"created"`
+}
+
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
@@ -62,6 +70,8 @@ var activeSessions = make(map[string]time.Time)
 var performanceMetrics = make(map[string][]time.Duration)
 var chatClients = make(map[*websocket.Conn]string)
 var chatMessages = make(chan ChatMessage)
+var taskQueue = make(chan Task, 100)
+var workers = 5
 
 func main() {
 	r := mux.NewRouter()
@@ -132,6 +142,11 @@ func main() {
 	
 	// Start WebSocket message handler
 	go handleMessages()
+	
+	// Start task workers
+	for i := 0; i < workers; i++ {
+		go taskWorker(i)
+	}
 	
 	fmt.Println("Payment Service running on :8081")
 	log.Fatal(http.ListenAndServe(":8081", r))
@@ -346,6 +361,31 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 		msg.Time = time.Now()
 		chatMessages <- msg
 	}
+}
+
+func taskWorker(id int) {
+	for task := range taskQueue {
+		fmt.Printf("Worker %d processing task %s\n", id, task.ID)
+		
+		switch task.Type {
+		case "email":
+			processEmailTask(task)
+		case "notification":
+			processNotificationTask(task)
+		default:
+			fmt.Printf("Unknown task type: %s\n", task.Type)
+		}
+	}
+}
+
+func processEmailTask(task Task) {
+	time.Sleep(time.Second * 2) // Simulate email sending
+	fmt.Printf("Email task %s completed\n", task.ID)
+}
+
+func processNotificationTask(task Task) {
+	time.Sleep(time.Millisecond * 500) // Simulate notification
+	fmt.Printf("Notification task %s completed\n", task.ID)
 }
 
 func generateID() string {
