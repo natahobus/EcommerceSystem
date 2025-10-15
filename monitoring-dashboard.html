@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-commerce Monitoring Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
+        .header { background: #2c3e50; color: white; padding: 1rem; text-align: center; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+        .card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .card h3 { color: #2c3e50; margin-bottom: 1rem; border-bottom: 2px solid #3498db; padding-bottom: 0.5rem; }
+        .metric { display: flex; justify-content: space-between; align-items: center; margin: 0.5rem 0; }
+        .metric-value { font-weight: bold; font-size: 1.2em; }
+        .status-good { color: #27ae60; }
+        .status-warning { color: #f39c12; }
+        .status-error { color: #e74c3c; }
+        .progress-bar { width: 100%; height: 20px; background: #ecf0f1; border-radius: 10px; overflow: hidden; margin: 0.5rem 0; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #3498db, #2ecc71); transition: width 0.3s ease; }
+        .chart-container { height: 200px; background: #f8f9fa; border-radius: 4px; display: flex; align-items: center; justify-content: center; margin: 1rem 0; }
+        .log-entry { padding: 0.5rem; margin: 0.25rem 0; border-left: 4px solid #3498db; background: #f8f9fa; font-family: monospace; font-size: 0.9em; }
+        .log-error { border-left-color: #e74c3c; }
+        .log-warning { border-left-color: #f39c12; }
+        .refresh-btn { background: #3498db; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-bottom: 1rem; }
+        .refresh-btn:hover { background: #2980b9; }
+        .alert { padding: 1rem; margin: 1rem 0; border-radius: 4px; }
+        .alert-info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        .alert-warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; }
+        .alert-danger { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛒 E-commerce System Monitoring Dashboard</h1>
+        <p>Real-time monitoring and analytics for the complete e-commerce platform</p>
+    </div>
+
+    <div class="container">
+        <button class="refresh-btn" onclick="refreshDashboard()">🔄 Refresh Data</button>
+        
+        <div class="alert alert-info">
+            <strong>System Status:</strong> All services are operational. Last updated: <span id="lastUpdate"></span>
+        </div>
+
+        <div class="grid">
+            <!-- System Health -->
+            <div class="card">
+                <h3>🏥 System Health</h3>
+                <div class="metric">
+                    <span>API Service</span>
+                    <span class="metric-value status-good" id="apiStatus">✅ Healthy</span>
+                </div>
+                <div class="metric">
+                    <span>Payments Service</span>
+                    <span class="metric-value status-good" id="paymentsStatus">✅ Healthy</span>
+                </div>
+                <div class="metric">
+                    <span>Frontend</span>
+                    <span class="metric-value status-good" id="frontendStatus">✅ Healthy</span>
+                </div>
+                <div class="metric">
+                    <span>Database</span>
+                    <span class="metric-value status-good" id="dbStatus">✅ Connected</span>
+                </div>
+                <div class="metric">
+                    <span>Uptime</span>
+                    <span class="metric-value" id="uptime">99.9%</span>
+                </div>
+            </div>
+
+            <!-- Performance Metrics -->
+            <div class="card">
+                <h3>⚡ Performance Metrics</h3>
+                <div class="metric">
+                    <span>API Response Time</span>
+                    <span class="metric-value status-good" id="responseTime">145ms</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 25%"></div>
+                </div>
+                <div class="metric">
+                    <span>Memory Usage</span>
+                    <span class="metric-value status-warning" id="memoryUsage">68%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 68%"></div>
+                </div>
+                <div class="metric">
+                    <span>CPU Usage</span>
+                    <span class="metric-value status-good" id="cpuUsage">42%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 42%"></div>
+                </div>
+            </div>
+
+            <!-- Business Metrics -->
+            <div class="card">
+                <h3>📊 Business Metrics</h3>
+                <div class="metric">
+                    <span>Today's Orders</span>
+                    <span class="metric-value" id="todayOrders">127</span>
+                </div>
+                <div class="metric">
+                    <span>Today's Revenue</span>
+                    <span class="metric-value" id="todayRevenue">R$ 15,420.50</span>
+                </div>
+                <div class="metric">
+                    <span>Active Users</span>
+                    <span class="metric-value" id="activeUsers">89</span>
+                </div>
+                <div class="metric">
+                    <span>Conversion Rate</span>
+                    <span class="metric-value" id="conversionRate">3.2%</span>
+                </div>
+                <div class="metric">
+                    <span>Cart Abandonment</span>
+                    <span class="metric-value status-warning" id="cartAbandonment">24%</span>
+                </div>
+            </div>
+
+            <!-- Traffic Analytics -->
+            <div class="card">
+                <h3>🌐 Traffic Analytics</h3>
+                <div class="chart-container">
+                    <div>📈 Real-time Traffic Chart</div>
+                </div>
+                <div class="metric">
+                    <span>Page Views (24h)</span>
+                    <span class="metric-value" id="pageViews">2,847</span>
+                </div>
+                <div class="metric">
+                    <span>Unique Visitors</span>
+                    <span class="metric-value" id="uniqueVisitors">1,203</span>
+                </div>
+                <div class="metric">
+                    <span>Bounce Rate</span>
+                    <span class="metric-value" id="bounceRate">32%</span>
+                </div>
+            </div>
+
+            <!-- Error Monitoring -->
+            <div class="card">
+                <h3>🚨 Error Monitoring</h3>
+                <div class="metric">
+                    <span>Error Rate (24h)</span>
+                    <span class="metric-value status-good" id="errorRate">0.2%</span>
+                </div>
+                <div class="metric">
+                    <span>Failed Payments</span>
+                    <span class="metric-value" id="failedPayments">3</span>
+                </div>
+                <div class="metric">
+                    <span>API Errors</span>
+                    <span class="metric-value" id="apiErrors">7</span>
+                </div>
+                <div class="metric">
+                    <span>Timeout Errors</span>
+                    <span class="metric-value" id="timeoutErrors">1</span>
+                </div>
+            </div>
+
+            <!-- Security Monitoring -->
+            <div class="card">
+                <h3>🔒 Security Monitoring</h3>
+                <div class="metric">
+                    <span>Blocked Requests</span>
+                    <span class="metric-value" id="blockedRequests">23</span>
+                </div>
+                <div class="metric">
+                    <span>Suspicious Activities</span>
+                    <span class="metric-value status-warning" id="suspiciousActivities">5</span>
+                </div>
+                <div class="metric">
+                    <span>Failed Logins</span>
+                    <span class="metric-value" id="failedLogins">12</span>
+                </div>
+                <div class="metric">
+                    <span>Rate Limit Hits</span>
+                    <span class="metric-value" id="rateLimitHits">8</span>
+                </div>
+            </div>
+
+            <!-- Database Metrics -->
+            <div class="card">
+                <h3>🗄️ Database Metrics</h3>
+                <div class="metric">
+                    <span>Query Response Time</span>
+                    <span class="metric-value status-good" id="dbResponseTime">45ms</span>
+                </div>
+                <div class="metric">
+                    <span>Active Connections</span>
+                    <span class="metric-value" id="dbConnections">12/100</span>
+                </div>
+                <div class="metric">
+                    <span>Cache Hit Rate</span>
+                    <span class="metric-value status-good" id="cacheHitRate">94%</span>
+                </div>
+                <div class="metric">
+                    <span>Storage Used</span>
+                    <span class="metric-value" id="storageUsed">2.3GB</span>
+                </div>
+            </div>
+
+            <!-- Recent Logs -->
+            <div class="card">
+                <h3>📝 Recent System Logs</h3>
+                <div id="systemLogs">
+                    <div class="log-entry">[INFO] 2024-01-15 14:30:25 - Payment processed successfully (ID: pay_1234)</div>
+                    <div class="log-entry">[INFO] 2024-01-15 14:29:18 - New order created (ID: 5678)</div>
+                    <div class="log-entry log-warning">[WARN] 2024-01-15 14:28:45 - High memory usage detected (75%)</div>
+                    <div class="log-entry">[INFO] 2024-01-15 14:27:32 - Cache cleared successfully</div>
+                    <div class="log-entry log-error">[ERROR] 2024-01-15 14:26:15 - Payment gateway timeout (retry scheduled)</div>
+                </div>
+            </div>
+
+            <!-- Alerts & Notifications -->
+            <div class="card">
+                <h3>🔔 Active Alerts</h3>
+                <div class="alert alert-warning">
+                    <strong>Memory Usage High:</strong> API service memory usage is at 75%. Consider scaling up.
+                </div>
+                <div class="alert alert-info">
+                    <strong>Scheduled Maintenance:</strong> Database backup scheduled for 02:00 AM tonight.
+                </div>
+                <div class="metric">
+                    <span>Critical Alerts</span>
+                    <span class="metric-value status-good" id="criticalAlerts">0</span>
+                </div>
+                <div class="metric">
+                    <span>Warning Alerts</span>
+                    <span class="metric-value status-warning" id="warningAlerts">2</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function refreshDashboard() {
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+            
+            // Simulate real-time data updates
+            const metrics = {
+                todayOrders: Math.floor(Math.random() * 50) + 100,
+                todayRevenue: (Math.random() * 5000 + 10000).toFixed(2),
+                activeUsers: Math.floor(Math.random() * 30) + 70,
+                responseTime: Math.floor(Math.random() * 100) + 100,
+                memoryUsage: Math.floor(Math.random() * 30) + 60,
+                cpuUsage: Math.floor(Math.random() * 40) + 30,
+                pageViews: Math.floor(Math.random() * 1000) + 2000,
+                uniqueVisitors: Math.floor(Math.random() * 500) + 1000
+            };
+            
+            Object.keys(metrics).forEach(key => {
+                const element = document.getElementById(key);
+                if (element) {
+                    if (key === 'todayRevenue') {
+                        element.textContent = `R$ ${metrics[key]}`;
+                    } else if (key.includes('Usage') || key === 'conversionRate' || key === 'bounceRate') {
+                        element.textContent = `${metrics[key]}%`;
+                    } else if (key === 'responseTime' || key === 'dbResponseTime') {
+                        element.textContent = `${metrics[key]}ms`;
+                    } else {
+                        element.textContent = metrics[key];
+                    }
+                }
+            });
+            
+            console.log('Dashboard refreshed at', new Date().toLocaleString());
+        }
+        
+        // Auto-refresh every 30 seconds
+        setInterval(refreshDashboard, 30000);
+        
+        // Initial load
+        refreshDashboard();
+        
+        // Simulate real-time log updates
+        setInterval(() => {
+            const logs = document.getElementById('systemLogs');
+            const newLog = document.createElement('div');
+            newLog.className = 'log-entry';
+            const timestamp = new Date().toLocaleString();
+            const messages = [
+                `[INFO] ${timestamp} - Health check completed successfully`,
+                `[INFO] ${timestamp} - Cache statistics updated`,
+                `[INFO] ${timestamp} - Background task completed`,
+                `[INFO] ${timestamp} - Metrics collected and stored`
+            ];
+            newLog.textContent = messages[Math.floor(Math.random() * messages.length)];
+            logs.insertBefore(newLog, logs.firstChild);
+            
+            // Keep only last 5 logs
+            while (logs.children.length > 5) {
+                logs.removeChild(logs.lastChild);
+            }
+        }, 10000);
+    </script>
+</body>
+</html>
