@@ -618,6 +618,51 @@ app.MapPost("/api/webhooks/test", async (WebhookService webhook) =>
     return Results.Ok(new { message = "Test webhook sent" });
 });
 
+// Gestão de Inventário
+app.MapGet("/api/inventory", async (ProductContext db) =>
+{
+    var inventory = await db.Products
+        .Select(p => new {
+            p.Id, p.Name, p.Stock, p.Category,
+            value = p.Price * p.Stock,
+            status = p.Stock == 0 ? "out_of_stock" : p.Stock <= 5 ? "low_stock" : "in_stock"
+        })
+        .ToListAsync();
+    
+    return new {
+        items = inventory,
+        summary = new {
+            totalItems = inventory.Count,
+            totalValue = inventory.Sum(i => i.value),
+            outOfStock = inventory.Count(i => i.status == "out_of_stock"),
+            lowStock = inventory.Count(i => i.status == "low_stock")
+        }
+    };
+});
+
+app.MapPost("/api/inventory/restock", async (RestockRequest request, ProductContext db) =>
+{
+    var product = await db.Products.FindAsync(request.ProductId);
+    if (product == null) return Results.NotFound();
+    
+    product.Stock += request.Quantity;
+    await db.SaveChangesAsync();
+    
+    return new { productId = request.ProductId, newStock = product.Stock, added = request.Quantity };
+});
+
+app.MapPost("/api/inventory/adjust", async (StockAdjustment adjustment, ProductContext db) =>
+{
+    var product = await db.Products.FindAsync(adjustment.ProductId);
+    if (product == null) return Results.NotFound();
+    
+    var oldStock = product.Stock;
+    product.Stock = adjustment.NewStock;
+    await db.SaveChangesAsync();
+    
+    return new { productId = adjustment.ProductId, oldStock, newStock = product.Stock };
+});
+
 // Sistema de Backup
 app.MapPost("/api/system/backup", async (ProductContext db) =>
 {
@@ -775,6 +820,20 @@ public class QueryRequest
     public List<string> Fields { get; set; } = new();
     public int? Limit { get; set; }
     public Dictionary<string, object> Filters { get; set; } = new();
+}
+
+public class RestockRequest
+{
+    public int ProductId { get; set; }
+    public int Quantity { get; set; }
+    public string Reason { get; set; } = "";
+}
+
+public class StockAdjustment
+{
+    public int ProductId { get; set; }
+    public int NewStock { get; set; }
+    public string Reason { get; set; } = "";
 }
 
 public class ThrottleService
