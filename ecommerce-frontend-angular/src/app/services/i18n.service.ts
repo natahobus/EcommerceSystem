@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
 
-export interface Translation {
+interface Translation {
   [key: string]: string | Translation;
 }
 
@@ -9,117 +9,160 @@ export interface Translation {
   providedIn: 'root'
 })
 export class I18nService {
-  private currentLanguage = 'pt-BR';
-  private languageSubject = new BehaviorSubject<string>(this.currentLanguage);
-  public language$ = this.languageSubject.asObservable();
-
-  private translations: { [lang: string]: Translation } = {
+  private currentLanguage = new BehaviorSubject<string>('pt-BR');
+  private translations: Record<string, Translation> = {
     'pt-BR': {
       common: {
-        add: 'Adicionar',
-        edit: 'Editar',
-        delete: 'Excluir',
-        save: 'Salvar',
+        loading: 'Carregando...',
+        error: 'Erro',
+        success: 'Sucesso',
         cancel: 'Cancelar',
-        search: 'Buscar',
-        loading: 'Carregando...'
+        confirm: 'Confirmar',
+        save: 'Salvar',
+        delete: 'Excluir',
+        edit: 'Editar',
+        search: 'Pesquisar'
       },
-      product: {
-        name: 'Nome do Produto',
+      products: {
+        title: 'Produtos',
+        name: 'Nome',
         price: 'Preço',
         stock: 'Estoque',
         category: 'Categoria',
-        addToCart: 'Adicionar ao Carrinho'
+        addToCart: 'Adicionar ao Carrinho',
+        outOfStock: 'Fora de Estoque',
+        inStock: 'Em Estoque'
       },
       cart: {
-        title: 'Carrinho de Compras',
-        empty: 'Seu carrinho está vazio',
+        title: 'Carrinho',
+        empty: 'Carrinho vazio',
         total: 'Total',
-        checkout: 'Finalizar Compra'
+        checkout: 'Finalizar Compra',
+        quantity: 'Quantidade',
+        remove: 'Remover'
+      },
+      orders: {
+        title: 'Pedidos',
+        status: 'Status',
+        date: 'Data',
+        total: 'Total',
+        pending: 'Pendente',
+        confirmed: 'Confirmado',
+        shipped: 'Enviado',
+        delivered: 'Entregue'
       }
     },
     'en-US': {
       common: {
-        add: 'Add',
-        edit: 'Edit',
-        delete: 'Delete',
-        save: 'Save',
+        loading: 'Loading...',
+        error: 'Error',
+        success: 'Success',
         cancel: 'Cancel',
-        search: 'Search',
-        loading: 'Loading...'
+        confirm: 'Confirm',
+        save: 'Save',
+        delete: 'Delete',
+        edit: 'Edit',
+        search: 'Search'
       },
-      product: {
-        name: 'Product Name',
+      products: {
+        title: 'Products',
+        name: 'Name',
         price: 'Price',
         stock: 'Stock',
         category: 'Category',
-        addToCart: 'Add to Cart'
+        addToCart: 'Add to Cart',
+        outOfStock: 'Out of Stock',
+        inStock: 'In Stock'
       },
       cart: {
-        title: 'Shopping Cart',
-        empty: 'Your cart is empty',
+        title: 'Cart',
+        empty: 'Cart is empty',
         total: 'Total',
-        checkout: 'Checkout'
+        checkout: 'Checkout',
+        quantity: 'Quantity',
+        remove: 'Remove'
+      },
+      orders: {
+        title: 'Orders',
+        status: 'Status',
+        date: 'Date',
+        total: 'Total',
+        pending: 'Pending',
+        confirmed: 'Confirmed',
+        shipped: 'Shipped',
+        delivered: 'Delivered'
       }
     },
     'es-ES': {
       common: {
-        add: 'Añadir',
-        edit: 'Editar',
-        delete: 'Eliminar',
-        save: 'Guardar',
+        loading: 'Cargando...',
+        error: 'Error',
+        success: 'Éxito',
         cancel: 'Cancelar',
-        search: 'Buscar',
-        loading: 'Cargando...'
+        confirm: 'Confirmar',
+        save: 'Guardar',
+        delete: 'Eliminar',
+        edit: 'Editar',
+        search: 'Buscar'
       },
-      product: {
-        name: 'Nombre del Producto',
+      products: {
+        title: 'Productos',
+        name: 'Nombre',
         price: 'Precio',
         stock: 'Stock',
         category: 'Categoría',
-        addToCart: 'Añadir al Carrito'
+        addToCart: 'Añadir al Carrito',
+        outOfStock: 'Agotado',
+        inStock: 'En Stock'
       },
       cart: {
-        title: 'Carrito de Compras',
-        empty: 'Tu carrito está vacío',
+        title: 'Carrito',
+        empty: 'Carrito vacío',
         total: 'Total',
-        checkout: 'Finalizar Compra'
+        checkout: 'Finalizar Compra',
+        quantity: 'Cantidad',
+        remove: 'Eliminar'
+      },
+      orders: {
+        title: 'Pedidos',
+        status: 'Estado',
+        date: 'Fecha',
+        total: 'Total',
+        pending: 'Pendiente',
+        confirmed: 'Confirmado',
+        shipped: 'Enviado',
+        delivered: 'Entregado'
       }
     }
   };
 
-  constructor() {
-    this.loadLanguage();
+  getCurrentLanguage(): Observable<string> {
+    return this.currentLanguage.asObservable();
   }
 
-  setLanguage(lang: string) {
-    if (this.translations[lang]) {
-      this.currentLanguage = lang;
-      this.languageSubject.next(lang);
-      localStorage.setItem('language', lang);
+  setLanguage(language: string): void {
+    if (this.translations[language]) {
+      this.currentLanguage.next(language);
+      localStorage.setItem('language', language);
     }
   }
 
-  getCurrentLanguage(): string {
-    return this.currentLanguage;
-  }
-
-  translate(key: string): string {
-    const keys = key.split('.');
-    let translation: any = this.translations[this.currentLanguage];
-
-    for (const k of keys) {
-      if (translation && typeof translation === 'object' && k in translation) {
-        translation = translation[k];
-      } else {
-        return key; // Return key if translation not found
-      }
+  translate(key: string, params?: Record<string, any>): string {
+    const lang = this.currentLanguage.value;
+    const translation = this.getNestedTranslation(this.translations[lang], key);
+    
+    if (!translation) {
+      return key; // Return key if translation not found
     }
 
-    return typeof translation === 'string' ? translation : key;
+    if (params) {
+      return this.interpolate(translation, params);
+    }
+
+    return translation;
   }
 
-  getAvailableLanguages(): { code: string; name: string }[] {
+  getAvailableLanguages(): Array<{code: string, name: string}> {
     return [
       { code: 'pt-BR', name: 'Português (Brasil)' },
       { code: 'en-US', name: 'English (US)' },
@@ -127,11 +170,53 @@ export class I18nService {
     ];
   }
 
-  private loadLanguage() {
-    const stored = localStorage.getItem('language');
-    if (stored && this.translations[stored]) {
-      this.currentLanguage = stored;
-      this.languageSubject.next(stored);
+  formatCurrency(amount: number): string {
+    const lang = this.currentLanguage.value;
+    const formatters = {
+      'pt-BR': new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }),
+      'en-US': new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }),
+      'es-ES': new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' })
+    };
+
+    return formatters[lang as keyof typeof formatters]?.format(amount) || `$${amount}`;
+  }
+
+  formatDate(date: Date): string {
+    const lang = this.currentLanguage.value;
+    const formatters = {
+      'pt-BR': new Intl.DateTimeFormat('pt-BR'),
+      'en-US': new Intl.DateTimeFormat('en-US'),
+      'es-ES': new Intl.DateTimeFormat('es-ES')
+    };
+
+    return formatters[lang as keyof typeof formatters]?.format(date) || date.toLocaleDateString();
+  }
+
+  private getNestedTranslation(obj: Translation, key: string): string {
+    const keys = key.split('.');
+    let current: any = obj;
+
+    for (const k of keys) {
+      if (current && typeof current === 'object' && k in current) {
+        current = current[k];
+      } else {
+        return '';
+      }
+    }
+
+    return typeof current === 'string' ? current : '';
+  }
+
+  private interpolate(template: string, params: Record<string, any>): string {
+    return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+      return params[key] !== undefined ? String(params[key]) : match;
+    });
+  }
+
+  loadLanguageFromStorage(): void {
+    const savedLanguage = localStorage.getItem('language');
+    if (savedLanguage && this.translations[savedLanguage]) {
+      this.currentLanguage.next(savedLanguage);
     }
   }
 }
