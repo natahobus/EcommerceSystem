@@ -136,6 +136,11 @@ func main() {
 	// Routes
 	r.HandleFunc("/health", healthCheck).Methods("GET")
 	r.HandleFunc("/api/payments", processPayment).Methods("POST")
+	r.HandleFunc("/api/payments/pix", processPixPayment).Methods("POST")
+	r.HandleFunc("/api/payments/credit-card", processCreditCard).Methods("POST")
+	r.HandleFunc("/api/payments/boleto", generateBoleto).Methods("POST")
+	r.HandleFunc("/api/payments/{id}/status", getPaymentStatus).Methods("GET")
+	r.HandleFunc("/api/payments/webhook", handlePaymentWebhook).Methods("POST")
 	r.HandleFunc("/api/sessions", getSessions).Methods("GET")
 	r.HandleFunc("/api/notifications", getNotifications).Methods("GET")
 	r.HandleFunc("/api/notifications/send", sendNotification).Methods("POST")
@@ -421,6 +426,174 @@ func sendNotification(w http.ResponseWriter, r *http.Request) {
 	
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "sent"})
+}
+
+func processPixPayment(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		OrderID string  `json:"orderId"`
+		Amount  float64 `json:"amount"`
+		CPF     string  `json:"cpf"`
+	}
+	
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	
+	payment := Payment{
+		ID:      generateID(),
+		OrderID: req.OrderID,
+		Amount:  req.Amount,
+		Method:  "pix",
+		Status:  "pending",
+		Created: time.Now(),
+	}
+	
+	// Generate PIX QR Code (simulated)
+	pixCode := fmt.Sprintf("00020126580014BR.GOV.BCB.PIX0136%s5204000053039865802BR5925ECOMMERCE STORE6009SAO PAULO62070503***6304", generateID())
+	
+	response := map[string]interface{}{
+		"payment":    payment,
+		"pixCode":    pixCode,
+		"qrCodeUrl":  fmt.Sprintf("https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=%s", pixCode),
+		"expiresAt":  time.Now().Add(30 * time.Minute),
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func processCreditCard(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		OrderID    string  `json:"orderId"`
+		Amount     float64 `json:"amount"`
+		CardNumber string  `json:"cardNumber"`
+		CardName   string  `json:"cardName"`
+		ExpiryDate string  `json:"expiryDate"`
+		CVV        string  `json:"cvv"`
+	}
+	
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	
+	// Validate card (basic validation)
+	if len(req.CardNumber) < 13 || len(req.CVV) < 3 {
+		http.Error(w, "Invalid card data", http.StatusBadRequest)
+		return
+	}
+	
+	payment := Payment{
+		ID:      generateID(),
+		OrderID: req.OrderID,
+		Amount:  req.Amount,
+		Method:  "credit_card",
+		Created: time.Now(),
+	}
+	
+	// Simulate payment processing
+	if rand.Float32() > 0.1 { // 90% success rate for credit cards
+		payment.Status = "approved"
+	} else {
+		payment.Status = "declined"
+	}
+	
+	response := map[string]interface{}{
+		"payment":        payment,
+		"transactionId":  generateID(),
+		"authCode":       fmt.Sprintf("AUTH%d", time.Now().Unix()),
+		"installments":   1,
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func generateBoleto(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		OrderID      string  `json:"orderId"`
+		Amount       float64 `json:"amount"`
+		CustomerName string  `json:"customerName"`
+		CustomerCPF  string  `json:"customerCpf"`
+	}
+	
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	
+	payment := Payment{
+		ID:      generateID(),
+		OrderID: req.OrderID,
+		Amount:  req.Amount,
+		Method:  "boleto",
+		Status:  "pending",
+		Created: time.Now(),
+	}
+	
+	// Generate boleto data
+	boletoNumber := fmt.Sprintf("34191.79001 01043.510047 91020.150008 1 %d", time.Now().Unix())
+	dueDate := time.Now().Add(3 * 24 * time.Hour) // 3 days to pay
+	
+	response := map[string]interface{}{
+		"payment":      payment,
+		"boletoNumber": boletoNumber,
+		"dueDate":      dueDate,
+		"boletoUrl":    fmt.Sprintf("https://boleto.example.com/pdf/%s", payment.ID),
+		"barCode":      "34191790010104351004791020150008100000" + fmt.Sprintf("%010.0f", req.Amount*100),
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func getPaymentStatus(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	paymentID := vars["id"]
+	
+	// Simulate payment status lookup
+	status := "pending"
+	if rand.Float32() > 0.3 {
+		status = "approved"
+	}
+	
+	response := map[string]interface{}{
+		"paymentId": paymentID,
+		"status":    status,
+		"updatedAt": time.Now(),
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func handlePaymentWebhook(w http.ResponseWriter, r *http.Request) {
+	var webhook struct {
+		PaymentID string `json:"paymentId"`
+		Status    string `json:"status"`
+		Amount    float64 `json:"amount"`
+		Timestamp string `json:"timestamp"`
+	}
+	
+	if err := json.NewDecoder(r.Body).Decode(&webhook); err != nil {
+		http.Error(w, "Invalid webhook data", http.StatusBadRequest)
+		return
+	}
+	
+	// Process webhook (update payment status, send notifications, etc.)
+	log.Printf("Webhook received: Payment %s status changed to %s", webhook.PaymentID, webhook.Status)
+	
+	// Send notification to connected clients
+	notification := NotificationMessage{
+		Type:    "payment_update",
+		Message: fmt.Sprintf("Payment %s status: %s", webhook.PaymentID, webhook.Status),
+		Data:    webhook,
+	}
+	broadcast <- notification
+	
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "processed"})
 }
 
 func generateID() string {
