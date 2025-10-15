@@ -444,6 +444,80 @@ app.MapGet("/api/metrics/realtime", async (ProductContext db) =>
     };
 });
 
+// Dashboard Analytics
+app.MapGet("/api/analytics/dashboard", async (ProductContext db) =>
+{
+    var now = DateTime.Now;
+    var last7Days = now.AddDays(-7);
+    var last30Days = now.AddDays(-30);
+    
+    var salesTrend = await db.Orders
+        .Where(o => o.CreatedAt >= last7Days)
+        .GroupBy(o => o.CreatedAt.Date)
+        .Select(g => new { date = g.Key, sales = g.Sum(o => o.Total), orders = g.Count() })
+        .OrderBy(x => x.date)
+        .ToListAsync();
+    
+    var topProducts = await db.OrderItems
+        .Where(oi => oi.Id > 0)
+        .GroupBy(oi => oi.ProductId)
+        .Select(g => new { productId = g.Key, quantity = g.Sum(oi => oi.Quantity), revenue = g.Sum(oi => oi.Price * oi.Quantity) })
+        .OrderByDescending(x => x.revenue)
+        .Take(5)
+        .ToListAsync();
+    
+    var categoryPerformance = await db.Products
+        .GroupBy(p => p.Category)
+        .Select(g => new { category = g.Key, products = g.Count(), totalValue = g.Sum(p => p.Price * p.Stock) })
+        .OrderByDescending(x => x.totalValue)
+        .ToListAsync();
+    
+    return new {
+        salesTrend,
+        topProducts,
+        categoryPerformance,
+        kpis = new {
+            totalRevenue = await db.Orders.SumAsync(o => o.Total),
+            totalOrders = await db.Orders.CountAsync(),
+            avgOrderValue = await db.Orders.AverageAsync(o => (double)o.Total),
+            conversionRate = 3.2 // Simulado
+        }
+    };
+});
+
+// Analytics por período
+app.MapGet("/api/analytics/period", async (ProductContext db, DateTime? start, DateTime? end) =>
+{
+    var startDate = start ?? DateTime.Now.AddDays(-30);
+    var endDate = end ?? DateTime.Now;
+    
+    var periodData = await db.Orders
+        .Where(o => o.CreatedAt >= startDate && o.CreatedAt <= endDate)
+        .GroupBy(o => new { o.CreatedAt.Year, o.CreatedAt.Month, o.CreatedAt.Day })
+        .Select(g => new {
+            date = new DateTime(g.Key.Year, g.Key.Month, g.Key.Day),
+            orders = g.Count(),
+            revenue = g.Sum(o => o.Total),
+            avgOrder = g.Average(o => (double)o.Total)
+        })
+        .OrderBy(x => x.date)
+        .ToListAsync();
+    
+    return new { period = new { start = startDate, end = endDate }, data = periodData };
+});
+
+// Heatmap de vendas
+app.MapGet("/api/analytics/heatmap", async (ProductContext db) =>
+{
+    var heatmapData = await db.Orders
+        .Where(o => o.CreatedAt >= DateTime.Now.AddDays(-30))
+        .GroupBy(o => new { Hour = o.CreatedAt.Hour, Day = (int)o.CreatedAt.DayOfWeek })
+        .Select(g => new { hour = g.Key.Hour, day = g.Key.Day, orders = g.Count() })
+        .ToListAsync();
+    
+    return heatmapData;
+});
+
 // Logs do sistema
 app.MapGet("/api/logs", async (ProductContext db) =>
 {
