@@ -226,7 +226,89 @@ app.MapGet("/api/metrics", async (ProductContext db) =>
     return new { topCategories, recentOrders };
 });
 
-// Busca avançada
+// Busca avançada com filtros
+app.MapPost("/api/products/search/advanced", async (AdvancedSearchRequest request, ProductContext db) =>
+{
+    var query = db.Products.AsQueryable();
+    
+    // Text search
+    if (!string.IsNullOrEmpty(request.Query))
+    {
+        query = query.Where(p => p.Name.Contains(request.Query) || 
+                                p.Category.Contains(request.Query) || 
+                                p.Tags.Contains(request.Query));
+    }
+    
+    // Price range
+    if (request.MinPrice.HasValue)
+        query = query.Where(p => p.Price >= request.MinPrice.Value);
+    if (request.MaxPrice.HasValue)
+        query = query.Where(p => p.Price <= request.MaxPrice.Value);
+    
+    // Categories
+    if (request.Categories?.Any() == true)
+        query = query.Where(p => request.Categories.Contains(p.Category));
+    
+    // Stock filter
+    if (request.InStockOnly)
+        query = query.Where(p => p.Stock > 0);
+    
+    // Featured filter
+    if (request.FeaturedOnly)
+        query = query.Where(p => p.IsFeatured);
+    
+    // On sale filter
+    if (request.OnSaleOnly)
+        query = query.Where(p => p.DiscountPercentage > 0);
+    
+    // Sorting
+    query = request.SortBy?.ToLower() switch
+    {
+        "price_asc" => query.OrderBy(p => p.Price),
+        "price_desc" => query.OrderByDescending(p => p.Price),
+        "name_asc" => query.OrderBy(p => p.Name),
+        "name_desc" => query.OrderByDescending(p => p.Name),
+        "newest" => query.OrderByDescending(p => p.Id),
+        "popularity" => query.OrderByDescending(p => p.Stock), // Simulated
+        _ => query.OrderBy(p => p.Name)
+    };
+    
+    var totalCount = await query.CountAsync();
+    var products = await query
+        .Skip((request.Page - 1) * request.PageSize)
+        .Take(request.PageSize)
+        .ToListAsync();
+    
+    // Generate facets
+    var facets = await GenerateSearchFacets(db, request);
+    
+    return new {
+        products,
+        totalCount,
+        page = request.Page,
+        pageSize = request.PageSize,
+        totalPages = (int)Math.Ceiling((double)totalCount / request.PageSize),
+        facets,
+        appliedFilters = request
+    };
+});
+
+// Search suggestions
+app.MapGet("/api/products/search/suggestions", async (ProductContext db, string? q) =>
+{
+    if (string.IsNullOrEmpty(q) || q.Length < 2) return new string[0];
+    
+    var suggestions = await db.Products
+        .Where(p => p.Name.Contains(q))
+        .Select(p => p.Name)
+        .Distinct()
+        .Take(10)
+        .ToListAsync();
+    
+    return suggestions;
+});
+
+// Busca avançada (legacy)
 app.MapGet("/api/products/search", async (ProductContext db, string? query, decimal? minPrice, decimal? maxPrice, string? category) =>
 {
     var products = db.Products.AsQueryable();
@@ -627,6 +709,46 @@ static async Task<object> GeneratePerformanceReport(ProductContext db, DateTime 
     return new { avgOrderValue, orderCount, reportType = "performance" };
 }
 
+static async Task<object> GenerateSearchFacets(ProductContext db, AdvancedSearchRequest request)
+{
+    var baseQuery = db.Products.AsQueryable();
+    
+    // Apply text search to base query for facets
+    if (!string.IsNullOrEmpty(request.Query))
+    {
+        baseQuery = baseQuery.Where(p => p.Name.Contains(request.Query) || 
+                                        p.Category.Contains(request.Query) || 
+                                        p.Tags.Contains(request.Query));
+    }
+    
+    var categories = await baseQuery
+        .GroupBy(p => p.Category)
+        .Select(g => new { name = g.Key, count = g.Count() })
+        .OrderByDescending(x => x.count)
+        .ToListAsync();
+    
+    var priceRanges = new[]
+    {
+        new { name = "Até R$50", min = 0m, max = 50m, count = await baseQuery.CountAsync(p => p.Price <= 50) },
+        new { name = "R$50 - R$100", min = 50m, max = 100m, count = await baseQuery.CountAsync(p => p.Price > 50 && p.Price <= 100) },
+        new { name = "R$100 - R$200", min = 100m, max = 200m, count = await baseQuery.CountAsync(p => p.Price > 100 && p.Price <= 200) },
+        new { name = "Acima de R$200", min = 200m, max = decimal.MaxValue, count = await baseQuery.CountAsync(p => p.Price > 200) }
+    };
+    
+    return new {
+        categories,
+        priceRanges = priceRanges.Where(pr => pr.count > 0),
+        availability = new {
+            inStock = await baseQuery.CountAsync(p => p.Stock > 0),
+            outOfStock = await baseQuery.CountAsync(p => p.Stock == 0)
+        },
+        features = new {
+            featured = await baseQuery.CountAsync(p => p.IsFeatured),
+            onSale = await baseQuery.CountAsync(p => p.DiscountPercentage > 0)
+        }
+    };
+}
+
 static async Task<object> GenerateSalesReport(ProductContext db, DateTime startDate)
 {
     var totalSales = await db.Orders.Where(o => o.CreatedAt >= startDate).SumAsync(o => o.Total);
@@ -901,6 +1023,20 @@ public class RestockRequest
     public int ProductId { get; set; }
     public int Quantity { get; set; }
     public string Reason { get; set; } = "";
+}
+
+public class AdvancedSearchRequest
+{
+    public string? Query { get; set; }
+    public decimal? MinPrice { get; set; }
+    public decimal? MaxPrice { get; set; }
+    public List<string>? Categories { get; set; }
+    public bool InStockOnly { get; set; } = false;
+    public bool FeaturedOnly { get; set; } = false;
+    public bool OnSaleOnly { get; set; } = false;
+    public string? SortBy { get; set; } = "name_asc";
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 20;
 }
 
 public class StockAdjustment
